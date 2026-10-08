@@ -6,13 +6,13 @@ import type { ComponentType } from "react";
 import type { BondReportT, PanelIdT } from "@so/engine/contract";
 import {
   AskPrice, Claim, DataLine, Fees, FlagsScore, Liquidity, Macro, Plaque, PriceLine, Product, Worst, Yield,
-} from "./blocks.js";
+} from "./blocks";
 
-export * from "./blocks.js";
-export * from "./ReportView.js";
-export * from "./branches.js";
-export * from "./app.js";
-export { Bars, BrandMark, scoreTone, liquidityTone } from "./ui.js";
+export * from "./blocks";
+export * from "./ReportView";
+export * from "./branches";
+export * from "./app";
+export { Bars, BrandMark, scoreTone, liquidityTone } from "./ui";
 
 /** Реестр: id панели → компонент. Plaque не зависит от контракта (статичный текст П23). */
 export const BLOCKS: Record<PanelIdT, ComponentType<{ r: BondReportT }>> = {

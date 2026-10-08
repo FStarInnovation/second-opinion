@@ -1,0 +1,50 @@
+{"text":"Проверь РОЛЬФ 1Р07, обещали 26%","report_shown":false,"intent":"check_security"}
+{"text":"RU000A10ASE2","report_shown":false,"intent":"check_security"}
+{"text":"что скажешь про ВЭБ.РФ 21?","report_shown":false,"intent":"check_security"}
+{"text":"https://www.moex.com/ru/issue.aspx?code=RU000A1038V6","report_shown":false,"intent":"check_security"}
+{"text":"4-01-10797-A-001P","report_shown":false,"intent":"check_security"}
+{"text":"Черкизово","report_shown":false,"intent":"check_security"}
+{"text":"мне предлагают облигации Самолета, посмотри","report_shown":false,"intent":"check_security"}
+{"text":"ОФЗ 26238 норм?","report_shown":false,"intent":"check_security"}
+{"text":"а теперь ЧеркизБ2P1","report_shown":true,"intent":"check_security"}
+{"text":"обещали 26%","report_shown":true,"intent":"set_promised"}
+{"text":"менеджер говорит, что будет 18 годовых","report_shown":true,"intent":"set_promised"}
+{"text":"в презентации написано 22% доходность","report_shown":true,"intent":"set_promised"}
+{"text":"сулят 2% в месяц","report_shown":true,"intent":"set_promised"}
+{"text":"говорят заработаю 30% за два года","report_shown":true,"intent":"set_promised"}
+{"text":"вложу 5 млн","report_shown":true,"intent":"set_position"}
+{"text":"хочу вложить миллион","report_shown":true,"intent":"set_position"}
+{"text":"сумма 500 тысяч","report_shown":true,"intent":"set_position"}
+{"text":"а если на 2 750 000?","report_shown":true,"intent":"set_position"}
+{"text":"у меня 300к","report_shown":true,"intent":"set_position"}
+{"text":"комиссия брокера 0,3%","report_shown":true,"intent":"set_commission"}
+{"text":"брокер берёт 0,05 за сделку","report_shown":true,"intent":"set_commission"}
+{"text":"тариф инвестор, комиссия 0.3","report_shown":true,"intent":"set_commission"}
+{"text":"предлагают по 98,5","report_shown":true,"intent":"set_price"}
+{"text":"цена 1010 рублей за бумагу","report_shown":true,"intent":"set_price"}
+{"text":"продают по 101% от номинала","report_shown":true,"intent":"set_price"}
+{"text":"второй","report_shown":true,"intent":"pick_variant"}
+{"text":"тот, что 2P1","report_shown":true,"intent":"pick_variant"}
+{"text":"берём первый","report_shown":true,"intent":"pick_variant"}
+{"text":"давай тот, который торгуется","report_shown":true,"intent":"pick_variant"}
+{"text":"что такое НКД?","report_shown":true,"intent":"explain_term"}
+{"text":"объясни оферту","report_shown":true,"intent":"explain_term"}
+{"text":"дюрация это что","report_shown":true,"intent":"explain_term"}
+{"text":"что значит G-спред","report_shown":false,"intent":"explain_term"}
+{"text":"флоатер — это хорошо или плохо?","report_shown":true,"intent":"explain_term"}
+{"text":"почему такой низкий балл?","report_shown":true,"intent":"ask_about_report"}
+{"text":"стоит ли держать до оферты?","report_shown":true,"intent":"ask_about_report"}
+{"text":"чем это отличается от депозита?","report_shown":true,"intent":"ask_about_report"}
+{"text":"а какие вопросы задать продавцу?","report_shown":true,"intent":"ask_about_report"}
+{"text":"насколько это рискованно для пенсионера","report_shown":true,"intent":"ask_about_report"}
+{"text":"что будет если ставки вырастут","report_shown":true,"intent":"ask_about_report"}
+{"text":"привет","report_shown":false,"intent":"out_of_scope"}
+{"text":"что купить чтобы разбогатеть?","report_shown":false,"intent":"out_of_scope"}
+{"text":"посоветуй акции Сбера или Газпрома","report_shown":false,"intent":"out_of_scope"}
+{"text":"куда вложить биткоин","report_shown":true,"intent":"out_of_scope"}
+{"text":"спасибо, пока","report_shown":true,"intent":"out_of_scope"}
+{"text":"напиши стих про облигации","report_shown":false,"intent":"out_of_scope"}
+{"text":"какая погода в Москве","report_shown":false,"intent":"out_of_scope"}
+{"text":"26","report_shown":true,"intent":"set_promised","ambiguous":true}
+{"text":"1 000 000","report_shown":true,"intent":"set_position","ambiguous":true}
+{"text":"0,3","report_shown":true,"intent":"set_commission","ambiguous":true}

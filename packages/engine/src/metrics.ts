@@ -4,15 +4,15 @@
  * Формулы и тексты — из сводной постановки, разделы «Метрики базового отчёта»
  * и «Red flags и Product Truth Score». Веса и пороги — в CONFIG.
  */
-import type { BondFacts } from "./iss/facts.js";
-import { dmy } from "./iss/facts.js";
+import type { BondFacts } from "./iss/facts";
+import { dmy } from "./iss/facts";
 
-import { CONFIG, gradeOf } from "./config.js";
-import { curWord, daysWord, fmt, fmtMax, mln, pctS, round4, rub, termPhrase } from "./format.js";
-import { flag12, worstDefaultText, worstFxText, worstRatesText } from "./inputs.js";
+import { CONFIG, gradeOf } from "./config";
+import { curWord, daysWord, fmt, fmtMax, mln, pctS, round4, rub, termPhrase } from "./format";
+import { flag12, worstDefaultText, worstFxText, worstRatesText } from "./inputs";
 
-export { CONFIG } from "./config.js";
-export { curWord, daysWord, fmt, fmtMax, mln, pctS, rub, termPhrase } from "./format.js";
+export { CONFIG } from "./config";
+export { curWord, daysWord, fmt, fmtMax, mln, pctS, rub, termPhrase } from "./format";
 
 /* ───── решатель YTM (бисекция, как 2.3.3.1) ───── */
 export function solve(P: number, flows: [number, number][]): number | null {

@@ -25,8 +25,8 @@ import { fileURLToPath } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { BuildResult, type BondReportT, type BuildResultT, type ReportInputs } from "@so/engine/contract";
 import { applyInputs } from "@so/engine/inputs";
-import { checkContract, factTokens, type Finding } from "./rules.js";
-import { FontCache } from "./fonts.js";
+import { checkContract, factTokens, type Finding } from "./rules";
+import { FontCache } from "./fonts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const argDist = process.argv.indexOf("--dist");

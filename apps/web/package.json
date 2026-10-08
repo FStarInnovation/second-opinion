@@ -1,0 +1,33 @@
+{
+  "name": "@so/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Э3: Next.js — прямой путь без LLM + ассистентный слой на assistant-ui (OpenRouter: Haiku 5.5 / GPT-6 Luna, Jev для решений)",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@ai-sdk/react": "4.0.136",
+    "@assistant-ui/react": "0.15.25",
+    "@assistant-ui/react-ai-sdk": "1.4.16",
+    "@assistant-ui/react-markdown": "0.14.19",
+    "@openrouter/ai-sdk-provider": "3.1.0",
+    "@so/blocks": "0.1.0",
+    "@so/engine": "0.1.0",
+    "ai": "7.0.133",
+    "next": "16.4.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.6.0"
+  }
+}

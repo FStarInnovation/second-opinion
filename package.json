@@ -11,6 +11,9 @@
     "golden:diff": "npm run -w @so/engine golden:diff",
     "pages": "npm run -w @so/static build",
     "validate": "npm run -w @so/validate validate",
-    "check": "npm run selftest && npm run pages && npm run validate"
+    "check": "npm run selftest && npm run pages && npm run validate",
+    "e2e:chat": "npm run -w @so/validate e2e:chat",
+    "web:dev": "npm run -w @so/web dev",
+    "web:build": "npm run -w @so/web build"
   }
 }

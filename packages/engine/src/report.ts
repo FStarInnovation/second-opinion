@@ -2,15 +2,15 @@
  * Сборка контракта bond_report@1 из фактов и метрик + композиция panels.
  * Инварианты плана: один контракт, числа только из движка, panels решают состав.
  */
-import { BondReport, type BondReportT, type ReportInputs } from "./contract.js";
-import type { BondFacts } from "./iss/facts.js";
-import { dmy } from "./iss/facts.js";
+import { BondReport, type BondReportT, type ReportInputs } from "./contract";
+import type { BondFacts } from "./iss/facts";
+import { dmy } from "./iss/facts";
 import {
   CONFIG, afterTax, flags, fmt, fmtMax, horizon, liquidity, mln, pctS, curWord,
   plainText, worst, yieldModel, yieldOf,
-} from "./metrics.js";
-import { plural, round2, round4 } from "./format.js";
-import { applyInputs } from "./inputs.js";
+} from "./metrics";
+import { plural, round2, round4 } from "./format";
+import { applyInputs } from "./inputs";
 
 /** Ввод сборки = ввод пользователя (см. ReportInputs в контракте). */
 export type BuildInputs = ReportInputs;

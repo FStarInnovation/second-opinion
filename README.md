@@ -35,7 +35,16 @@ packages/blocks   React-блоки реестра (чистые компонен
   src/styles.css      стиль v3: Geist, #353d64, белые карточки
 apps/static       Э2: SSG — страницы всех golden-кейсов, витрина блоков, манифест сборки
 tools/validate    Playwright-валидатор: 13 условий падения на 1280 и 390 px + проверка ввода; --selfcheck
-apps/web          (Э3) Next.js + assistant-ui
+apps/web          Э3: Next.js — прямой путь без LLM (/, /check, /api/report) + ассистент (/chat, /api/chat)
+  lib/engine.ts       build() + кэш 15 мин + офлайн-режим на golden (SO_OFFLINE=1)
+  lib/tools.ts        одобренный реестр инструментов: resolve_security, build_bond_report, set_inputs, explain_term
+  lib/digest.ts       что видит модель (~600 токенов), а не контракт целиком
+  lib/jev.ts          Jev: маршрутизация реплик и разбор «обещали» (Decisions API) + правило-фоллбэк
+  lib/gate.ts         уверенные реплики → инструмент без LLM, в тот же UI-поток
+  lib/model.ts        OpenRouter: Haiku 5.5 + fallback GPT-6 Luna; MOCK_LLM — скриптовые сценарии
+  lib/prompt.ts       системный промпт: числа только из инструментов, без ИИР
+  components/         Thread на примитивах assistant-ui; tool UI → те же блоки @so/blocks
+  jev/                размеченные фразы для проверки маршрутизатора (jev:check / scripts/jev-eval.ts)
 ```
 
 ## Запуск
@@ -48,12 +57,18 @@ npm run validate        # валидатор по всем страницам; �
 npm run -w @so/validate selfcheck   # испортить страницы 12 способами — каждый должен быть пойман
 npm run check           # всё сразу
 
+# Э3 — сайт и ассистент
+cp apps/web/.env.example apps/web/.env   # вписать OPENROUTER_API_KEY; без ключа — MOCK-режим
+npm run web:dev                          # http://localhost:3000 — форма, /check, /chat
+npm run e2e:chat                         # сценарии чата на запущенном сервере (SO_OFFLINE=1 MOCK_LLM=1)
+npx tsx apps/web/scripts/jev-eval.ts --jev   # маршрутизатор на 50 размеченных фразах, живой Jev
+
 cd packages/engine
 npx tsx src/cli.ts "РОЛЬФ 1Р07" --promised 26          # живой ISS
 npx tsx src/cli.ts "RU000A1038V6" --out report.json     # контракт в файл
 ```
 
-Ключей не требуется (ISS открытый). Секреты платных источников — только в `.env` вне гита.
+Движку и страницам ключей не требуется (ISS открытый). Ассистенту нужен `OPENROUTER_API_KEY` в `apps/web/.env` — только там, никогда в чате и файлах репозитория.
 
 ## Инварианты (нарушать нельзя)
 

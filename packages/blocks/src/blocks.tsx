@@ -1,3 +1,4 @@
+"use client";
 /**
  * Блоки реестра (dev-док «Генеративная сборка страницы бумаги», раздел «Реестр блоков»).
  * Каждый блок — чистая функция от контракта bond_report@1: ничего не считает по методике,
@@ -8,7 +9,7 @@ import { useState, type FormEvent } from "react";
 import type { BondReportT, ReportInputs } from "@so/engine/contract";
 import { CONFIG } from "@so/engine/config";
 import { fmt, fmtMax } from "@so/engine/format";
-import { Bars, Card, LockIcon, cap1, liquidityTone, pct2, pctMax, scoreTone, type BarDatum } from "./ui.js";
+import { Bars, Card, LockIcon, cap1, liquidityTone, pct2, pctMax, scoreTone, type BarDatum } from "./ui";
 
 type R = BondReportT;
 

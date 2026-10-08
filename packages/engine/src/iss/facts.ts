@@ -2,7 +2,7 @@
  * Сбор фактов о бумаге: запросы №1–№4 + поиск → нормализованная структура BondFacts.
  * Поля и правила — из раздела «Источники данных» сводной постановки.
  */
-import { issJson, rows, toNum, isoDateOrNull, q, type FetchOptions } from "./client.js";
+import { issJson, rows, toNum, isoDateOrNull, q, type FetchOptions } from "./client";
 
 export interface CouponRow {
   dateIso: string;

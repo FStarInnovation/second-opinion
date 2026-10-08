@@ -17,7 +17,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "@so/engine";
 import type { BondReportT, BuildResultT, PanelIdT } from "@so/engine/contract";
 import { BLOCKS, SiteHeader } from "@so/blocks";
-import { renderPage, FONT_HREF, type PageData } from "./page.js";
+import { renderPage, FONT_HREF, type PageData } from "./page";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "../../..");

@@ -6,7 +6,8 @@
   "description": "Валидатор страниц: рендерит каждую golden-страницу в Chromium и проверяет условия падения из dev-дока",
   "scripts": {
     "validate": "tsx src/validate.ts",
-    "selfcheck": "tsx src/validate.ts --selfcheck"
+    "selfcheck": "tsx src/validate.ts --selfcheck",
+    "e2e:chat": "tsx src/e2e-chat.ts"
   },
   "dependencies": {
     "@so/engine": "0.1.0",

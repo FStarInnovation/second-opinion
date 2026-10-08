@@ -4,3 +4,8 @@ node_modules/
 dist/
 apps/static/dist/
 tools/validate/.cache/
+apps/web/.next/
+apps/web/.env*.local
+apps/web/.e2e-shots/
+apps/web/next-env.d.ts
+*.tsbuildinfo

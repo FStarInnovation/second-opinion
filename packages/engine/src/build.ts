@@ -4,11 +4,11 @@
  * инструменты ассистента и CLI вызывают именно её.
  * Результат — конверт BuildResult (zod): отчёт или ветки 2.3.0 «уточните выпуск» / «не нашли» / ошибка ввода.
  */
-import { recognize } from "./recognize.js";
-import { collectFacts } from "./iss/facts.js";
-import { assembleReport, type BuildInputs } from "./report.js";
-import { BuildResult, type BondReportT, type BuildResultT } from "./contract.js";
-import type { FetchOptions } from "./iss/client.js";
+import { recognize } from "./recognize";
+import { collectFacts } from "./iss/facts";
+import { assembleReport, type BuildInputs } from "./report";
+import { BuildResult, type BondReportT, type BuildResultT } from "./contract";
+import type { FetchOptions } from "./iss/client";
 
 export async function build(
   query: string,

@@ -20,8 +20,9 @@ function ensureDispatcher(): Promise<void> {
     const proxy = process.env.HTTPS_PROXY || process.env.https_proxy;
     if (!proxy) return;
     const { ProxyAgent, setGlobalDispatcher } = await import("undici");
+    // CA прокси песочницы: путь только из окружения (бандлеру не нужно трассировать весь диск)
     const caPath = process.env.NODE_EXTRA_CA_CERTS || "/root/.ccr/ca-bundle.crt";
-    const ca = fs.existsSync(caPath) ? fs.readFileSync(caPath, "utf8") : undefined;
+    const ca = fs.existsSync(/*turbopackIgnore: true*/ caPath) ? fs.readFileSync(/*turbopackIgnore: true*/ caPath, "utf8") : undefined;
     setGlobalDispatcher(
       new ProxyAgent({ uri: proxy, proxyTls: ca ? { ca } : undefined, requestTls: ca ? { ca } : undefined }),
     );

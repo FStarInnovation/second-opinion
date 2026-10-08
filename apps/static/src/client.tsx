@@ -4,7 +4,7 @@
  */
 import { hydrateRoot } from "react-dom/client";
 import { ResultApp } from "@so/blocks";
-import type { PageData } from "./page.js";
+import type { PageData } from "./page";
 
 const el = document.getElementById("so-data");
 const root = document.getElementById("root");

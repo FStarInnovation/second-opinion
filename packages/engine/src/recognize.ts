@@ -5,7 +5,7 @@
  * поиск — /iss/securities.json?q=, только group = stock_bonds.
  * Распознавание возвращает тип продукта (пока только bond) — задел под линейку.
  */
-import { issJson, rows, q, type FetchOptions } from "./iss/client.js";
+import { issJson, rows, q, type FetchOptions } from "./iss/client";
 
 export type Recognized =
   | { kind: "bond"; secid: string; product_type: "bond" }

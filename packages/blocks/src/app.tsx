@@ -1,3 +1,4 @@
+"use client";
 /**
  * Корень страницы: шапка сайта + результат build(). Состояние ввода живёт здесь,
  * пересчёт — функцией движка applyInputs (та же, что на сервере; паритет проверяет selftest).
@@ -5,9 +6,9 @@
 import { useCallback, useState } from "react";
 import type { BuildResultT, ReportInputs } from "@so/engine/contract";
 import { applyInputs } from "@so/engine/inputs";
-import { ReportView, CABINET_HREF } from "./ReportView.js";
-import { ErrView, NotFoundView, PickView } from "./branches.js";
-import { BrandMark } from "./ui.js";
+import { ReportView, CABINET_HREF } from "./ReportView";
+import { ErrView, NotFoundView, PickView } from "./branches";
+import { BrandMark } from "./ui";
 
 export function SiteHeader({ homeHref, cabinetHref }: { homeHref?: string; cabinetHref?: string }) {
   return (

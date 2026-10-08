@@ -1,9 +1,10 @@
+"use client";
 /**
  * Ветки распознавания 2.3.0: «Уточните выпуск» (pick), «Не нашли» (notfound), ошибка ввода (err).
  * Рисуются из конверта BuildResult движка; фактов в шаблоне нет.
  */
 import type { BuildResultT } from "@so/engine/contract";
-import { BackIcon, SearchIcon } from "./ui.js";
+import { BackIcon, SearchIcon } from "./ui";
 
 type Pick = Extract<BuildResultT, { kind: "pick" }>;
 type NotFound = Extract<BuildResultT, { kind: "notfound" }>;

@@ -8,10 +8,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { build } from "./build.js";
-import { shift, solve, termPhrase } from "./metrics.js";
-import { applyInputs } from "./inputs.js";
-import { BondReport } from "./contract.js";
+import { build } from "./build";
+import { shift, solve, termPhrase } from "./metrics";
+import { applyInputs } from "./inputs";
+import { BondReport } from "./contract";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const goldenDir = path.join(here, "..", "golden");

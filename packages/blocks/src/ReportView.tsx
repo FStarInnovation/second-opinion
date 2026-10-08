@@ -1,3 +1,4 @@
+"use client";
 /**
  * Композиция страницы отчёта: рендерит ТОЛЬКО блоки из r.panels (их выбрал движок — composePanels),
  * раскладывая их по сетке прототипа v3. Шаблон не содержит фактов о бумаге.
@@ -6,8 +7,8 @@
 import type { BondReportT, PanelIdT, ReportInputs } from "@so/engine/contract";
 import {
   AskPrice, Claim, DataLine, Fees, FlagsScore, InputsPanel, Liquidity, Macro, Plaque, PriceLine, Product, Worst, Yield,
-} from "./blocks.js";
-import { BackIcon } from "./ui.js";
+} from "./blocks";
+import { BackIcon } from "./ui";
 
 export interface ReportViewProps {
   report: BondReportT;
@@ -20,6 +21,8 @@ export interface ReportViewProps {
   cabinetHref?: string;
   /** В чате (Э3) шапка страницы и кнопка «Новая проверка» не нужны. */
   compact?: boolean;
+  /** В чате ввод меняется репликами (set_inputs), панель ввода не показываем. */
+  showInputs?: boolean;
 }
 
 export const CABINET_HREF = "https://vfo.autremus.com";
@@ -28,7 +31,7 @@ export function ReportView(p: ReportViewProps) {
   const r = p.report;
   const has = (id: PanelIdT) => r.panels.includes(id);
   const yieldCard = has("claim") || has("yield") || has("price_line") || has("ask_price");
-  const showInputs = has("liquidity") || has("fees");
+  const showInputs = (p.showInputs ?? true) && (has("liquidity") || has("fees"));
   const row3 = has("liquidity") || has("fees") || has("worst");
 
   return (
@@ -74,7 +77,7 @@ export function ReportView(p: ReportViewProps) {
       {has("macro") ? <Macro r={r} /> : null}
       {has("plaque") ? <Plaque cabinetHref={p.cabinetHref ?? CABINET_HREF} /> : null}
 
-      <p className="cap">Не является индивидуальной инвестиционной рекомендацией.</p>
+      {!p.compact ? <p className="cap">Не является индивидуальной инвестиционной рекомендацией.</p> : null}
     </div>
   );
 }

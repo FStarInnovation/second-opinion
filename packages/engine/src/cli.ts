@@ -4,8 +4,8 @@
  *      [--out file.json] [--quiet]
  */
 import fs from "node:fs";
-import { build } from "./build.js";
-import { fmt, pctS } from "./metrics.js";
+import { build } from "./build";
+import { fmt, pctS } from "./metrics";
 
 function arg(name: string): string | null {
   const i = process.argv.indexOf("--" + name);

@@ -1,0 +1,37 @@
+/* Чат: раскладка треда и сообщений поверх стилей блоков (@so/blocks/styles.css). Константы дизайна — только здесь. */
+.so-chat-page { height: 100dvh; }
+.so-thread { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.so-thread__viewport { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+  max-width: 1120px; width: 100%; margin: 0 auto; padding: 24px 24px 0; scroll-padding-bottom: 160px; }
+.so-thread__empty { display: flex; flex-direction: column; gap: 12px; max-width: 720px; margin: 8vh auto 0; }
+.so-thread__suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.so-thread__footer { position: sticky; bottom: 0; margin-top: auto; padding: 12px 0 16px; background: linear-gradient(to bottom, rgba(248,250,252,0), var(--so-bg) 24%);
+  display: flex; flex-direction: column; gap: 6px; }
+.so-thread__disclaimer { text-align: center; }
+
+.so-msg { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.so-msg--user { align-items: flex-end; }
+.so-msg__bubble { max-width: min(640px, 90%); background: var(--so-brand); color: #fff; padding: 10px 14px; border-radius: 14px 14px 4px 14px; }
+.so-msg__bubble .so-msg__text { color: #fff; }
+.so-msg__text { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.so-msg--assistant .so-msg__text { max-width: 720px; }
+
+.so-tool { min-width: 0; }
+.so-tool--report { display: flex; flex-direction: column; }
+.so-tool--report .so-main { padding: 0; }
+.so-tool--pending { display: inline-flex; align-items: center; gap: 10px; color: var(--so-ink-3); font-size: 14px; padding: 8px 0; }
+.so-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--so-brand); animation: so-pulse 1.2s ease-in-out infinite; }
+@keyframes so-pulse { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .so-dot { animation: none; } }
+
+.so-composer { display: flex; gap: 8px; align-items: flex-end; background: #fff; border: 1px solid var(--so-line); border-radius: 14px; padding: 8px; }
+.so-composer__input { flex: 1 1 auto; min-width: 0; resize: none; border: 0; outline: none; font: inherit; font-size: 15px; line-height: 1.5; padding: 10px 8px; max-height: 160px; background: transparent; color: var(--so-ink); }
+.so-composer__send { height: 42px; flex: 0 0 auto; }
+.so-composer__send[data-state="hidden"], .so-composer__send[hidden] { display: none; }
+@media (max-width: 640px) {
+  .so-thread__viewport { padding: 16px 16px 0; }
+  .so-msg__bubble { max-width: 100%; }
+  .so-composer { flex-wrap: wrap; }
+  .so-composer__input { flex-basis: 100%; }
+  .so-composer__send { margin-left: auto; }
+}

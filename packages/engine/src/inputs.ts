@@ -9,9 +9,9 @@
  *
  * Модуль без зависимостей от Node и zod — попадает в клиентский бандл страницы.
  */
-import type { BondReportT, PanelIdT, ReportInputs } from "./contract.js";
-import { CONFIG, gradeOf } from "./config.js";
-import { daysWord, fmt, fmtMax, pctS, round2, rub } from "./format.js";
+import type { BondReportT, PanelIdT, ReportInputs } from "./contract";
+import { CONFIG, gradeOf } from "./config";
+import { daysWord, fmt, fmtMax, pctS, round2, rub } from "./format";
 
 type R = BondReportT;
 
