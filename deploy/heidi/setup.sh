@@ -11,8 +11,8 @@ DOMAIN="${DOMAIN:-mkt-second-opinion.ru}"
 
 say() { printf '\n\033[1;34m== %s\033[0m\n' "$*"; }
 
-say "Пакеты: git, Node.js, npm"
-sudo dnf install -y git nodejs npm >/dev/null
+say "Пакеты: git, nano, Node.js, npm"
+sudo dnf install -y git nano nodejs npm >/dev/null
 node -v; npm -v
 NODE_MAJOR=$(node -v | sed 's/^v\([0-9]*\).*/\1/')
 if [ "$NODE_MAJOR" -lt 20 ]; then
