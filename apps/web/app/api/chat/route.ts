@@ -12,6 +12,7 @@ import { getSession, MESSAGE_LIMIT } from "@/lib/session";
 import { runGate } from "@/lib/gate";
 import { jevProvider } from "@/lib/jev";
 import { appendUsage, estimateCost } from "@/lib/usage-log";
+import { budgetState, countMessage, spend, BUDGET_EXHAUSTED_TEXT } from "@/lib/budget";
 
 export const maxDuration = 60;
 
@@ -27,17 +28,25 @@ export async function POST(req: Request) {
   const text = textOf(lastUser);
 
   session.userMessages += 1;
-  if (session.userMessages > MESSAGE_LIMIT) {
-    const stream = createUIMessageStream({
-      execute: ({ writer }) => {
-        const id = "lim";
-        writer.write({ type: "text-start", id });
-        writer.write({ type: "text-delta", id, delta: `В этой сессии лимит ${MESSAGE_LIMIT} сообщений исчерпан. Обновите страницу, чтобы начать новую проверку.` });
-        writer.write({ type: "text-end", id });
-      },
+  const plainReply = (delta: string) =>
+    createUIMessageStreamResponse({
+      stream: createUIMessageStream({
+        execute: ({ writer }) => {
+          const id = "lim";
+          writer.write({ type: "text-start", id });
+          writer.write({ type: "text-delta", id, delta });
+          writer.write({ type: "text-end", id });
+        },
+      }),
     });
-    return createUIMessageStreamResponse({ stream });
+  if (session.userMessages > MESSAGE_LIMIT)
+    return plainReply(`В этой сессии лимит ${MESSAGE_LIMIT} сообщений исчерпан. Обновите страницу, чтобы начать новую проверку.`);
+  const budget = budgetState();
+  if (budget.exhausted) {
+    log({ chat: session.id, step: "budget", spent: Math.round(budget.spent * 1e4) / 1e4, limit: budget.limit });
+    return plainReply(BUDGET_EXHAUSTED_TEXT);
   }
+  countMessage();
 
   const tools = makeTools(session);
   const stream = createUIMessageStream({
@@ -46,6 +55,7 @@ export async function POST(req: Request) {
       /* 1. Jev-гейт */
       const gate = text ? await runGate(writer, session, text, textOf(lastAssistant) || null) : { handled: false, decision: null };
       const jevIn = gate.decision?.usage?.inputTokens;
+      if (gate.decision?.source === "jev") spend(gate.decision.usage?.cost ?? estimateCost("jev", jevIn ?? 0) ?? 0);
       log({
         chat: session.id, step: "gate", text: text.slice(0, 80),
         ...(gate.decision ? { intent: gate.decision.intent, confidence: gate.decision.confidence, source: gate.decision.source } : {}),
@@ -77,6 +87,7 @@ export async function POST(req: Request) {
           session.usage.input += usage.inputTokens ?? 0;
           session.usage.output += usage.outputTokens ?? 0;
           session.usage.cost += cost;
+          spend(cost);
           log({
             chat: session.id, step: "llm", provider: provider(), model,
             in: usage.inputTokens, cached, cache_write: cacheWrite, out: usage.outputTokens, cost: Math.round(cost * 1e6) / 1e6,

@@ -14,6 +14,7 @@
     "check": "npm run selftest && npm run pages && npm run validate",
     "e2e:chat": "npm run -w @so/validate e2e:chat",
     "web:dev": "npm run -w @so/web dev",
-    "web:build": "npm run -w @so/web build"
+    "web:build": "npm run -w @so/web build",
+    "web:start": "npm run -w @so/web start"
   }
 }
