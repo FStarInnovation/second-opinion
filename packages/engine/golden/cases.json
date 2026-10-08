@@ -12,6 +12,7 @@
     { "name": "cherk1p6", "query": "RU000A105M67", "inputs": {}, "checks": "нет цены: ask_price; листинг 3 + неликвид + спред = 65" },
     { "name": "pick-cherkizovo", "query": "Черкизово", "inputs": {}, "checks": "экран выбора по эмитенту" },
     { "name": "pick-program", "query": "4-01-10797-A-001P", "inputs": {}, "checks": "перебор 4B02-01…30 по номеру программы" },
-    { "name": "notfound", "query": "RU000A10E2A5", "inputs": {}, "checks": "не найдена, ISIN корректного формата" }
+    { "name": "notfound", "query": "RU000A10E2A5", "inputs": {}, "checks": "не найдена, ISIN корректного формата" },
+    { "name": "ofz26243-name", "query": "ОФЗ-26243-ПД", "inputs": {}, "checks": "ОФЗ по номеру выпуска: дефисное имя ISS не находит, резолв через «26243»" }
   ]
 }

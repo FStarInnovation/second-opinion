@@ -101,9 +101,28 @@ export async function recognize(input: string, opts: FetchOptions = {}): Promise
     return { kind: "notfound", isinValid: false };
   }
 
-  // 6. Название выпуска или эмитента: точное совпадение shortname → одна бумага, иначе список
-  const hits = await search(raw, opts);
+  // 5а. ОФЗ по номеру выпуска: «ОФЗ-26243-ПД», «ОФЗ 26243», «офз26243» — ISS ищет по словам, и дефисное
+  //     «ОФЗ-26243-ПД» для него одно слово без совпадений (08.10.2026). Пятизначный номер сам по себе
+  //     находит ровно одну бумагу типа ofz_bond.
+  const ofz = raw.match(/^\s*(?:ОФЗ|OFZ)\s*[-–—]?\s*(?:П[ДКВ]|ИН|АД)?\s*[-–—]?\s*(\d{5})\b/i) ?? raw.match(/\b(\d{5})\b.*(?:ОФЗ|OFZ)/i);
+  if (ofz) {
+    const hits0 = (await search(ofz[1], opts)).filter((r) => r.type === "ofz_bond");
+    if (hits0.length === 1) return { kind: "bond", secid: hits0[0].secid, product_type: "bond" };
+  }
+
+  // 6. Название выпуска или эмитента: точное совпадение shortname → одна бумага, иначе список.
+  //    Если ISS ничего не нашёл, повторяем с дефисами/точками → пробелы («ЧеркизБ1P7» ≠ «Черкиз-Б1P7»).
+  let hits = await search(raw, opts);
+  if (hits.length === 0) {
+    const spaced = raw.replace(/[-–—_./]+/g, " ").replace(/\s+/g, " ").trim();
+    if (spaced !== raw) hits = await search(spaced, opts);
+  }
   const exact = hits.filter((r) => r.shortname.toLowerCase() === raw.toLowerCase());
   if (exact.length === 1) return { kind: "bond", secid: exact[0].secid, product_type: "bond" };
+  // Совпадение без учёта пробелов/дефисов/регистра: «ОФЗ 26243 ПД» ⊇ «ОФЗ 26243», «Черкиз Б1P7» = «ЧеркизБ1P7»
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-zа-яё0-9]/gi, "");
+  const nq = norm(raw);
+  const loose = hits.filter((r) => { const ns = norm(r.shortname); return ns.length >= 5 && (ns === nq || nq.includes(ns)); });
+  if (loose.length === 1) return { kind: "bond", secid: loose[0].secid, product_type: "bond" };
   return outcome(hits, false);
 }
