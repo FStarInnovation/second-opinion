@@ -1,0 +1,22 @@
+{
+  "name": "@so/static",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Э2: статические страницы отчёта (SSG) из golden-контрактов + витрина блоков",
+  "scripts": {
+    "build": "tsx src/build-pages.tsx",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@so/blocks": "0.1.0",
+    "@so/engine": "0.1.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

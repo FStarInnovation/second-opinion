@@ -10,6 +10,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "./build.js";
 import { shift, solve, termPhrase } from "./metrics.js";
+import { applyInputs } from "./inputs.js";
+import { BondReport } from "./contract.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const goldenDir = path.join(here, "..", "golden");
@@ -78,5 +80,39 @@ for (const c of meta.cases) {
   }
 }
 
-console.log(failures === 0 ? `\nSELFTEST OK (${meta.cases.length} golden-кейсов)` : `\nSELFTEST FAILED: ${failures}`);
+/* 3. Паритет: пересчёт на странице (applyInputs по контракту) ≡ полная сборка движком с тем же вводом.
+      Это и есть гарантия инвариантов 1 и 3: страница не считает «своё». */
+const VARIANTS: Record<string, number | null>[] = [
+  { position_size: 1_000_000 },
+  { position_size: 5_000_000, k_pct: 0.3 },
+  { position_size: 100_000, k_pct: 0.05 },
+  { promised_pct: 30 },
+  { promised_pct: null },
+  { k_pct: 2.5, promised_pct: 12 },
+];
+for (const c of meta.cases) {
+  const expFile = path.join(goldenDir, "expected", c.name + ".json");
+  if (!fs.existsSync(expFile)) continue;
+  const expected = JSON.parse(fs.readFileSync(expFile, "utf8"));
+  if (expected.kind !== "report") continue;
+  for (const v of VARIANTS) {
+    const label = `parity:${c.name}:${JSON.stringify(v)}`;
+    try {
+      const client = BondReport.parse(applyInputs(expected.report, v as any));
+      const server = await build(c.query, { ...c.inputs, ...v } as any, {
+        fromSnapshotDir: path.join(goldenDir, "snapshots", c.name),
+        todayIso: meta.todayIso,
+      });
+      const a = JSON.stringify(strip(client));
+      const b = JSON.stringify(strip(server.kind === "report" ? server.report : server));
+      let i = 0;
+      while (i < Math.min(a.length, b.length) && a[i] === b[i]) i++;
+      ok(label, a === b, a === b ? "" : `…${a.slice(Math.max(0, i - 60), i + 60)}… ≠ …${b.slice(Math.max(0, i - 60), i + 60)}…`);
+    } catch (e) {
+      ok(label, false, String(e));
+    }
+  }
+}
+
+console.log(failures === 0 ? `\nSELFTEST OK (${meta.cases.length} golden-кейсов + паритет страница ≡ движок)` : `\nSELFTEST FAILED: ${failures}`);
 process.exit(failures === 0 ? 0 : 1);

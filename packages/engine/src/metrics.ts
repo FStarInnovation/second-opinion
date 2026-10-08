@@ -7,73 +7,12 @@
 import type { BondFacts } from "./iss/facts.js";
 import { dmy } from "./iss/facts.js";
 
-export const CONFIG = {
-  tax: 0.13,
-  positionDefault: 500_000,
-  kGrid: [0, 0.1, 0.3, 0.5, 1] as const,
-  scenarios: {
-    down: { delta: -2.5, capYears: 1 }, // Δ = −2,5 п.п. × min(t, 1)
-    higherLonger: { up: 1.5, to: -1.5, breakAt: 1, flatAt: 2 },
-  },
-  flags: {
-    premiumBp: 600, premiumHighBp: 1000, premiumPts: 20, premiumHighPts: 30,
-    illiqTurnover: 1_000_000, illiqTrades: 10, illiqPts: 15,
-    spreadPct: 1, spreadPts: 10,
-    notTradedPts: 40,
-    longDurYears: 5, longDurPts: 5,
-    callPts: 10, callSoonDays: 30, callSoonPts: 15,
-    resetPts: 5, fxPts: 5, floatPts: 5,
-    gapPp: 2, gapHighPp: 5, gapPts: 20, gapHighPts: 30,
-    qualPts: 10, listPts: 10, defaultPts: 40,
-  },
-  grades: [
-    [85, "Прозрачный продукт"],
-    [70, "Есть оговорки"],
-    [50, "Много рисков"],
-    [0, "Высокий риск"],
-  ] as const,
-  liq: { goodTurnover: 10e6, midTurnover: 1e6, dayShare: 0.2 },
-  controlWarnPp: 0.5,
-};
+import { CONFIG, gradeOf } from "./config.js";
+import { curWord, daysWord, fmt, fmtMax, mln, pctS, round4, rub, termPhrase } from "./format.js";
+import { flag12, worstDefaultText, worstFxText, worstRatesText } from "./inputs.js";
 
-/* ───── форматирование (ru-RU, как в постановке) ───── */
-export const fmt = (x: number, d: number) =>
-  new Intl.NumberFormat("ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d }).format(x);
-export const fmtMax = (x: number, d: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: d }).format(x);
-export const pctS = (x: number | null) => (x == null ? "—" : fmt(x, 2) + "%");
-export const rub = (x: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Math.round(x)) + " ₽";
-export const mln = (x: number | null) => {
-  if (x == null) return "—";
-  if (x >= 1e9) return fmt(x / 1e9, 2) + " млрд ₽";
-  if (x >= 1e6) return fmt(x / 1e6, 1) + " млн ₽";
-  if (x >= 1e3) return fmt(x / 1e3, 0) + " тыс. ₽";
-  return fmt(x, 0) + " ₽";
-};
-export const daysWord = (n: number) => {
-  const w =
-    n % 10 === 1 && n % 100 !== 11 ? "день"
-    : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "дня"
-    : "дней";
-  return `${n} ${w}`;
-};
-export const termPhrase = (days: number) => {
-  const y = days / 365;
-  if (y < 1) return Math.max(1, Math.round(days / 30.4)) + " мес.";
-  const r = Math.round(y * 10) / 10;
-  const s = fmtMax(r, 1);
-  if (Number.isInteger(r)) {
-    const w =
-      r % 10 === 1 && r % 100 !== 11 ? "год"
-      : [2, 3, 4].includes(r % 10) && ![12, 13, 14].includes(r % 100) ? "года"
-      : "лет";
-    return `${s} ${w}`;
-  }
-  return s + " года";
-};
-export const curWord = (fu: string) =>
-  fu === "SUR" || fu === "RUB" ? "рублях" : fu === "CNY" ? "юанях" : fu === "USD" ? "долларах" : fu === "EUR" ? "евро" : fu;
+export { CONFIG } from "./config.js";
+export { curWord, daysWord, fmt, fmtMax, mln, pctS, rub, termPhrase } from "./format.js";
 
 /* ───── решатель YTM (бисекция, как 2.3.3.1) ───── */
 export function solve(P: number, flows: [number, number][]): number | null {
@@ -235,7 +174,7 @@ export interface Liquidity {
   spread: number | null; missing: boolean;
   share: number | null; days: number | null;
   exitPct: number | null; exitCost: number | null; exitDays: number | null;
-  noExit: boolean; summary: string;
+  noExit: boolean; // текст от позиции собирает inputs.liquidityLine
 }
 
 export function liquidity(b: BondFacts, pos: number): Liquidity {
@@ -250,18 +189,9 @@ export function liquidity(b: BondFacts, pos: number): Liquidity {
   const exitPct = spread == null ? null : spread / 2;
   const exitDays = days == null ? null : Math.max(1, Math.ceil(days));
   const noExit = b.stop || avg === 0;
-  let summary: string;
-  if (b.stop) summary = "Биржевых торгов по бумаге нет — выйти через биржу нельзя.";
-  else if (!avg)
-    summary = `За последние ${b.nDays} торговых дней по бумаге не было сделок — выйти через биржу сейчас нельзя. Категория ликвидности — низкая.`;
-  else
-    summary =
-      `При позиции ${rub(pos)} стоимость моментального выхода ≈ ` +
-      (exitPct == null ? "не определить: в стакане нет встречных заявок" : fmt(exitPct, 2) + "%") +
-      `, аккуратного выхода ≈ ${daysWord(exitDays!)}. Категория ликвидности — ${cat}.`;
   return {
     avg, cat, spread, missing, share, days, exitPct,
-    exitCost: exitPct == null ? null : (pos * exitPct) / 100, exitDays, noExit, summary,
+    exitCost: exitPct == null ? null : (pos * exitPct) / 100, exitDays, noExit,
   };
 }
 
@@ -330,17 +260,17 @@ export function flags(
     fx, C.fxPts, "FACEUNIT = " + b.fu);
   add(11, "Плавающий купон", "Доход зависит от рыночной ставки и снизится вместе с ней.",
     fl, C.floatPts, fl ? "BONDTYPE: плавающий" : "купон постоянный");
-  const gap = claimed != null && ym.main != null ? claimed - ym.main : null;
+  const F12 = flag12(claimed, ym.main);
+  const gap = F12.gap;
   add(12, "Обещанная доходность выше реальной",
     "Вам обещали больше, чем бумага даёт на самом деле.",
-    gap != null && gap > C.gapPp, gap != null && gap > C.gapHighPp ? C.gapHighPts : C.gapPts,
-    gap == null ? "заявленная не указана" : `обещали ${fmtMax(claimed!, 2)}%, расчётная ${pctS(ym.main)}`);
+    F12.fired, F12.points, F12.details);
   add(13, "Дефолт в истории выпуска", "По выпуску уже был дефолт или технический дефолт.",
     b.hasDefault, C.defaultPts, b.hasDefault ? "HASDEFAULT = 1" : "нет");
 
   const fired = F.filter((f) => f.fired).sort((a, c) => c.points - a.points);
   const score = Math.max(0, 100 - fired.reduce((s, f) => s + f.points, 0));
-  const grade = CONFIG.grades.find(([min]) => score >= min)![1];
+  const grade = gradeOf(score);
   return { all: F, fired, score, grade, gap, prem, fx, callSoon, illiq };
 }
 
@@ -353,40 +283,41 @@ export function dmod(b: BondFacts, ym: YieldModel): number {
   return days / 365 / (1 + y / 100);
 }
 
+export interface WorstItem { id: string; title: string; text: string; loss_pct_1pp: number | null; loss_pct_3pp: number | null }
+
 export function worst(
   b: BondFacts, ym: YieldModel, F: FlagsResult, pos: number,
-): { list: { id: string; title: string; text: string }[]; d1: number; d3: number } {
-  const W: { id: string; title: string; text: string }[] = [];
+): { list: WorstItem[]; d1: number; d3: number } {
+  const W: WorstItem[] = [];
+  const add = (id: string, title: string, text: string, l1: number | null = null, l3: number | null = null) =>
+    W.push({ id, title, text, loss_pct_1pp: l1, loss_pct_3pp: l3 });
   const dm = dmod(b, ym);
-  const d1 = dm, d3 = dm * 3;
+  // Потери в % храним с точностью 4 знака — тексты от позиции пересобирает applyInputs по этим полям
+  const d1 = round4(dm), d3 = round4(dm * 3);
   if (b.ctype === "float")
-    W.push({ id: "rates", title: "Рост ставок",
-      text: `Купон пересматривается каждые ${daysWord(b.period ?? 0)}, поэтому цена почти не реагирует на ставки: при росте на 3 п.п. — ${d3 < 0.1 ? "менее 0,1%" : "около −" + fmt(d3, 1) + "%"}.` });
-  else
-    W.push({ id: "rates", title: "Рост ставок",
-      text: `При росте ставок на 1 п.п. цена упадёт примерно на ${fmt(d1, 1)}%, на 3 п.п. — на ${fmt(d3, 1)}% (−${rub((pos * d3) / 100)} на вашу позицию). Если держать до ${ym.h.label}, убытка не будет.` });
-  W.push({ id: "default", title: "Дефолт эмитента",
-    text: `В худшем случае можно потерять вложенное — до ${rub(pos)}.` + (F.prem ? " Рынок оценивает кредитный риск эмитента как высокий." : "") });
+    add("rates", "Рост ставок",
+      `Купон пересматривается каждые ${daysWord(b.period ?? 0)}, поэтому цена почти не реагирует на ставки: при росте на 3 п.п. — ${d3 < 0.1 ? "менее 0,1%" : "около −" + fmt(d3, 1) + "%"}.`, d1, d3);
+  else add("rates", "Рост ставок", worstRatesText(d1, d3, pos, ym.h.label), d1, d3);
+  add("default", "Дефолт эмитента", worstDefaultText(pos, F.prem));
   if (b.offerKind === "call") {
     if (ym.call?.short)
-      W.push({ id: "call", title: "Досрочное погашение",
-        text: `Если эмитент погасит выпуск ${dmy(ym.call.dateIso)}, за ${daysWord(ym.call.days)} вы получите ${fmt(ym.call.gain, 2)} ₽ на облигацию (${fmt(ym.call.gainPct, 2)}%), а деньги придётся размещать заново.` });
+      add("call", "Досрочное погашение",
+        `Если эмитент погасит выпуск ${dmy(ym.call.dateIso)}, за ${daysWord(ym.call.days)} вы получите ${fmt(ym.call.gain, 2)} ₽ на облигацию (${fmt(ym.call.gainPct, 2)}%), а деньги придётся размещать заново.`);
     else if (ym.call)
-      W.push({ id: "call", title: "Досрочное погашение",
-        text: `Если эмитент погасит выпуск ${dmy(ym.call.dateIso)}, доходность составит ${pctS(ym.call.y)}.` });
+      add("call", "Досрочное погашение",
+        `Если эмитент погасит выпуск ${dmy(ym.call.dateIso)}, доходность составит ${pctS(ym.call.y)}.`);
     else
-      W.push({ id: "call", title: "Досрочное погашение",
-        text: "Эмитент может погасить выпуск раньше срока; дата в данных биржи не раскрыта." });
+      add("call", "Досрочное погашение",
+        "Эмитент может погасить выпуск раньше срока; дата в данных биржи не раскрыта.");
   }
   if (b.ctype === "float" && ym.scen)
-    W.push({ id: "float-down", title: "Снижение ставок",
-      text: `Если ставки снизятся на 2,5 п.п. за год, доходность составит ${pctS(ym.scen[1])} вместо ${pctS(ym.scen[0])}.` });
+    add("float-down", "Снижение ставок",
+      `Если ставки снизятся на 2,5 п.п. за год, доходность составит ${pctS(ym.scen[1])} вместо ${pctS(ym.scen[0])}.`);
   if (F.fx)
-    W.push({ id: "fx", title: "Курс валюты",
-      text: `При укреплении рубля к валюте номинала на 10% рублёвый результат снизится примерно на 10% (−${rub(pos * 0.1)}).` });
+    add("fx", "Курс валюты", worstFxText(pos));
   if (b.reset)
-    W.push({ id: "reset", title: "Ставка после оферты",
-      text: `Если не предъявить бумагу к выкупу ${dmy(b.offerDateIso)}, дальше ставку назначит эмитент — она может быть ниже рынка.` });
+    add("reset", "Ставка после оферты",
+      `Если не предъявить бумагу к выкупу ${dmy(b.offerDateIso)}, дальше ставку назначит эмитент — она может быть ниже рынка.`);
   return { list: W, d1, d3 };
 }
 

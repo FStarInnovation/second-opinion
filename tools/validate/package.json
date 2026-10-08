@@ -1,0 +1,21 @@
+{
+  "name": "@so/validate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Валидатор страниц: рендерит каждую golden-страницу в Chromium и проверяет условия падения из dev-дока",
+  "scripts": {
+    "validate": "tsx src/validate.ts",
+    "selfcheck": "tsx src/validate.ts --selfcheck"
+  },
+  "dependencies": {
+    "@so/engine": "0.1.0",
+    "playwright": "1.56.1",
+    "@so/static": "0.1.0",
+    "undici": "^8.11.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

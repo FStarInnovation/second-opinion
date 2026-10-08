@@ -2,22 +2,18 @@
  * Сборка контракта bond_report@1 из фактов и метрик + композиция panels.
  * Инварианты плана: один контракт, числа только из движка, panels решают состав.
  */
-import { BondReport, type BondReportT, type PanelIdT } from "./contract.js";
+import { BondReport, type BondReportT, type ReportInputs } from "./contract.js";
 import type { BondFacts } from "./iss/facts.js";
 import { dmy } from "./iss/facts.js";
 import {
-  CONFIG, afterTax, flags, fmt, fmtMax, horizon, liquidity, pctS, rub, curWord,
+  CONFIG, afterTax, flags, fmt, fmtMax, horizon, liquidity, mln, pctS, curWord,
   plainText, worst, yieldModel, yieldOf,
 } from "./metrics.js";
+import { plural, round2, round4 } from "./format.js";
+import { applyInputs } from "./inputs.js";
 
-export interface BuildInputs {
-  position_size?: number;
-  k_pct?: number | null;
-  promised_pct?: number | null;
-  promised_text?: string | null;
-  promised_source?: "field" | "file" | null;
-  offer_price_pct?: number | null; // ветка «нет цены»
-}
+/** Ввод сборки = ввод пользователя (см. ReportInputs в контракте). */
+export type BuildInputs = ReportInputs;
 
 export function assembleReport(
   b: BondFacts,
@@ -79,7 +75,7 @@ export function assembleReport(
     yLine = `Если ставки не изменятся — ${pctS(ym.scen[0])}, при снижении — ${pctS(ym.scen[1])}, если высокие дольше — ${pctS(ym.scen[2])}. Купон сейчас ≈ ${fmt(b.r0 ?? 0, 1)}% годовых.`;
   } else if (ym.main != null) {
     yKind = "single";
-    values.push({ label: "к " + h.label.replace(/^(погашения|оферты)/, "$1"), pct: round2(ym.main) });
+    values.push({ label: "к " + h.label.replace(/^погашения/, "погашению").replace(/^оферты/, "оферте"), pct: round2(ym.main) });
     yLine = `${fmt(ym.main, 2)}% годовых — при покупке по ${fmt(ym.cleanPct ?? 0, 2)}% от номинала (${fmt(ym.P ?? 0, 2)} ${b.fu === "SUR" || b.fu === "RUB" ? "₽" : b.fu} с НКД) и удержании до ${h.label}. Купон — ${b.ctype === "fixed" ? fmtMax(b.cp ?? 0, 2) + "%" : "—"}.`;
     if (b.fu !== "SUR" && b.fu !== "RUB") yLine += ` Доходность в ${curWord(b.fu)}.`;
   }
@@ -109,38 +105,26 @@ export function assembleReport(
           return [kk, pre == null ? null : round2(pre), post == null ? null : round2(post)];
         })
       : [];
-  const kk = k && k > 0 ? Math.min(k, 3) : 0;
-  const pre = kGrid.length ? interp(kGrid, kk, 1) : null;
-  const post = kGrid.length ? interp(kGrid, kk, 2) : null;
-  const feeLine = kk
-    ? `С комиссией брокера ${fmtMax(kk, 2)}% при покупке доходность — ${pctS(pre)} до налога и ${pctS(post)} после.`
-    : `Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: ${pctS(pre)} до налога по графику выплат и ${pctS(post)} после налога 13%.`;
+  /* строка данных (П30) */
+  const hhmm = b.upd ? b.upd.slice(0, 5) : null;
+  const tradeDmy = dmy(b.tradeDateIso);
+  const dataLine =
+    (hhmm && tradeDmy ? `Данные Мосбиржи на ${hhmm} МСК, ${tradeDmy}` : tradeDmy ? `Данные Мосбиржи на ${tradeDmy}` : "Данные Мосбиржи") +
+    ". Задержка до 15 минут";
 
-  /* заявленная доходность */
-  const gap = F.gap;
-  const claimLine =
-    promised == null || ym.main == null
-      ? null
-      : `Обещали: ${fmtMax(promised, 2)}% · На самом деле: ${fmt(ym.main, 2)}% · Разница: ${fmt(Math.abs(gap ?? 0), 1)} п.п.`;
-
-  /* композиция panels */
-  const panels: PanelIdT[] = ["data_line", "product"];
-  if (statusKind === "not_traded") {
-    panels.push("flags_score", "plaque");
-  } else {
-    if (promised != null) panels.push("claim");
-    if (statusKind === "no_price" && userPrice == null) panels.push("ask_price");
-    else panels.push("yield", "price_line");
-    panels.push("liquidity");
-    if (statusKind === "ok") panels.push("fees");
-    panels.push("worst", "flags_score", "plaque");
-  }
+  /* метрики ликвидности (не зависят от позиции) */
+  const metricsLine = b.stop
+    ? null
+    : !liq.avg
+      ? `За ${b.nDays} торговых дней сделок не было.`
+      : `За ${b.nDays} торговых дней: средний оборот ${mln(liq.avg)} в день, ${fmt(b.avgNT ?? 0, 0)} ${plural(Math.round(b.avgNT ?? 0), "сделка", "сделки", "сделок")} в день; ` +
+        (liq.spread == null ? "спред не определить — нет встречных заявок." : `спред ${fmt(liq.spread, 2)}%.`);
 
   const report: BondReportT = {
     schema: "bond_report@1",
     product_type: "bond",
     built_at: new Date().toISOString(),
-    data_time: { updatetime: b.upd, trade_date: b.tradeDateIso },
+    data_time: { updatetime: b.upd, trade_date: b.tradeDateIso, line: dataLine },
     security: {
       secid: b.secid, isin: b.isin, boardid: b.boardid, shortname: b.shortname,
       name: b.secname, regnumber: b.regnumber, emitent_title: b.emit, typename: b.kind,
@@ -169,13 +153,7 @@ export function assembleReport(
       qualified: b.qual,
       maturity_date: dmy(b.matIso),
     },
-    claim: {
-      promised_pct: promised,
-      promised_text: inputs.promised_text ?? null,
-      source: promised == null ? null : inputs.promised_source ?? "field",
-      gap_pp: gap == null ? null : round2(gap),
-      line: claimLine,
-    },
+    claim: { promised_pct: null, promised_text: null, source: null, gap_pp: null, line: null }, // ← applyInputs
     yield: {
       kind: yKind,
       horizon: statusKind === "ok" ? h.kind : null,
@@ -216,20 +194,18 @@ export function assembleReport(
       spread_missing_side: liq.missing,
       position_size: pos,
       share_pct: liq.share == null ? null : round2(liq.share),
-      exit_now_pct: liq.exitPct == null ? null : round2(liq.exitPct),
+      exit_now_pct: liq.exitPct == null ? null : round4(liq.exitPct), // 4 знака: от него считается стоимость выхода
       exit_now_money: liq.exitCost == null ? null : Math.round(liq.exitCost),
       exit_days: liq.exitDays,
       category: liq.cat,
       no_exit: liq.noExit,
-      line: liq.summary,
+      line: "", // ← applyInputs (liquidityLine)
+      metrics_line: metricsLine,
     },
     fees_tax: {
-      k_pct: k,
-      k_grid: kGrid,
-      pre_tax_pct: pre == null ? null : round2(pre),
-      post_tax_pct: post == null ? null : round2(post),
+      k_pct: null, k_grid: kGrid, pre_tax_pct: null, post_tax_pct: null, // ← applyInputs
       tax_note: "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
-      line: feeLine,
+      line: "",
     },
     worst: statusKind === "ok" ? W.list : [],
     flags: F.all,
@@ -241,33 +217,20 @@ export function assembleReport(
       none_fired: F.fired.length === 0,
     },
     macro: null,
-    panels,
-    inputs: {
-      position_size: pos, k_pct: k, promised_pct: promised, offer_price_pct: userPrice,
-    },
+    panels: [], // ← applyInputs (composePanels)
+    inputs: { position_size: pos, k_pct: null, promised_pct: null, offer_price_pct: userPrice },
     diagnostics: {
       snapshot_dir: diagnostics.snapshot_dir ?? null,
       control_diff_pp: controlDiff,
       warnings,
     },
   };
-  return BondReport.parse(report);
+  // Всё, что зависит от ввода пользователя, собирает одна функция движка — та же, что работает на странице
+  return BondReport.parse(applyInputs(report, inputs));
 }
 
-function round2(x: number): number { return Math.round(x * 100) / 100; }
 function daysW(n: number): string {
   const w = n % 10 === 1 && n % 100 !== 11 ? "день"
     : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "дня" : "дней";
   return `${n} ${w}`;
-}
-function interp(grid: [number, number | null, number | null][], k: number, col: 1 | 2): number | null {
-  if (!grid.length) return null;
-  let i = 0;
-  while (i < grid.length - 2 && k > grid[i + 1][0]) i++;
-  const a = grid[i], b = grid[i + 1] ?? grid[i];
-  const av = a[col], bv = b[col];
-  if (av == null || bv == null) return av ?? bv;
-  if (b[0] === a[0]) return av;
-  const t = (k - a[0]) / (b[0] - a[0]);
-  return av + (bv - av) * t;
 }

@@ -14,16 +14,27 @@
 
 ```
 packages/engine   движок данных: ISS №1–№4 + поиск → метрики → bond_report@1
-  src/contract.ts     zod-схема контракта
+  src/contract.ts     zod-схема контракта + конверт BuildResult (отчёт / выбор выпуска / не нашли / ошибка)
   src/iss/client.ts   клиент ISS (прокси, снимки, классификация ошибок)
   src/iss/facts.ts    сырые таблицы → факты о бумаге
   src/recognize.ts    распознавание ввода (правила 2.3.0)
   src/metrics.ts      доходность, ликвидность, комиссии/налог, worst-case, 13 флагов, Truth Score
-  src/report.ts       сборка контракта + композиция panels
+  src/inputs.ts       ввод пользователя → зависимые поля + композиция panels (работает и в браузере)
+  src/config.ts       веса, пороги, сетки методики
+  src/format.ts       ru-RU форматирование (общее для движка и страницы)
+  src/report.ts       сборка контракта
   src/cli.ts          tsx src/cli.ts "<запрос>" [--promised 26] [--pos 500000] [--k 0.3] …
-  src/selftest.ts     selftest без сети: юнит-проверки + golden-кейсы из снимков
+  src/selftest.ts     без сети: юнит-проверки + golden + паритет «страница ≡ движок»
+  src/golden-update.ts  пополевой дифф эталонов (--write — записать)
   golden/             снимки ISS (2026-10-08) + эталонные контракты, 11 кейсов
-packages/blocks   (Э2) React-блоки отчёта
+packages/blocks   React-блоки реестра (чистые компоненты от контракта, без assistant-ui)
+  src/blocks.tsx      data_line, product, claim, yield, price_line, ask_price, liquidity, fees, worst, flags_score, plaque
+  src/ReportView.tsx  раскладка по panels (сетка прототипа v3) — та же в чате Э3
+  src/branches.tsx    «Уточните выпуск», «Не нашли», ошибка ввода
+  src/app.tsx         шапка + состояние ввода (пересчёт — applyInputs движка)
+  src/styles.css      стиль v3: Geist, #353d64, белые карточки
+apps/static       Э2: SSG — страницы всех golden-кейсов, витрина блоков, манифест сборки
+tools/validate    Playwright-валидатор: 13 условий падения на 1280 и 390 px + проверка ввода; --selfcheck
 apps/web          (Э3) Next.js + assistant-ui
 ```
 
@@ -31,10 +42,15 @@ apps/web          (Э3) Next.js + assistant-ui
 
 ```bash
 npm install
+npm run selftest        # движок офлайн: golden + паритет страница ≡ движок
+npm run pages           # собрать apps/static/dist (страницы, витрина, manifest.json)
+npm run validate        # валидатор по всем страницам; скриншоты — apps/static/dist/screens
+npm run -w @so/validate selfcheck   # испортить страницы 12 способами — каждый должен быть пойман
+npm run check           # всё сразу
+
 cd packages/engine
 npx tsx src/cli.ts "РОЛЬФ 1Р07" --promised 26          # живой ISS
 npx tsx src/cli.ts "RU000A1038V6" --out report.json     # контракт в файл
-npm run selftest                                        # офлайн, golden-набор
 ```
 
 Ключей не требуется (ISS открытый). Секреты платных источников — только в `.env` вне гита.

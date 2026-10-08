@@ -26,6 +26,7 @@ export const BondReport = z.object({
   data_time: z.object({
     updatetime: z.string().nullable(), // HH:MM:SS МСК
     trade_date: z.string().nullable(), // YYYY-MM-DD
+    line: z.string(), // «Данные Мосбиржи на HH:MM МСК, ДД.ММ.ГГГГ. Задержка до 15 минут» (П30)
   }),
   security: z.object({
     secid: z.string(),
@@ -113,7 +114,8 @@ export const BondReport = z.object({
     exit_days: num.nullable(),
     category: z.enum(["норм", "умеренно", "низкая", "—"]),
     no_exit: z.boolean(),
-    line: z.string(),
+    line: z.string(), // зависит от позиции
+    metrics_line: z.string().nullable(), // «За 20 торговых дней: средний оборот … ; спред …»
   }),
   fees_tax: z.object({
     k_pct: num.nullable(), // null — приглашение ввести
@@ -123,7 +125,15 @@ export const BondReport = z.object({
     tax_note: z.string(),
     line: z.string(),
   }),
-  worst: z.array(z.object({ id: z.string(), title: z.string(), text: z.string() })),
+  worst: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      text: z.string(),
+      loss_pct_1pp: num.nullable(), // падение цены при росте ставок на 1 п.п., % (только id = rates)
+      loss_pct_3pp: num.nullable(),
+    }),
+  ),
   flags: z.array(
     z.object({
       id: num.int().min(1).max(13),
@@ -158,3 +168,33 @@ export const BondReport = z.object({
 
 export type BondReportT = z.infer<typeof BondReport>;
 export type PanelIdT = z.infer<typeof PanelId>;
+
+/* ───── Конверт результата build(): отчёт или ветки распознавания (2.3.0) ───── */
+export const Candidate = z.object({
+  secid: z.string(),
+  isin: z.string().nullable(),
+  shortname: z.string(),
+  regnumber: z.string().nullable(),
+  is_traded: z.boolean(),
+  emitent_title: z.string().nullable(),
+});
+
+export const BuildResult = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("report"), report: BondReport }),
+  z.object({ kind: z.literal("pick"), query: z.string(), note: z.string(), candidates: z.array(Candidate) }),
+  z.object({ kind: z.literal("notfound"), query: z.string(), isinValid: z.boolean() }),
+  z.object({ kind: z.literal("err"), query: z.string(), msg: z.string() }),
+]);
+
+export type CandidateT = z.infer<typeof Candidate>;
+export type BuildResultT = z.infer<typeof BuildResult>;
+
+/** Ввод пользователя, меняющий отчёт без похода в ISS (кроме offer_price_pct — та требует пересборки). */
+export interface ReportInputs {
+  position_size?: number;
+  k_pct?: number | null;
+  promised_pct?: number | null;
+  promised_text?: string | null;
+  promised_source?: "field" | "file" | null;
+  offer_price_pct?: number | null;
+}

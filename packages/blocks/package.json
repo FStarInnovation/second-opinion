@@ -1,0 +1,24 @@
+{
+  "name": "@so/blocks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "React-блоки отчёта Second opinion: чистые компоненты от контракта bond_report@1, без зависимости от assistant-ui",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@so/engine": "0.1.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.6.0"
+  }
+}

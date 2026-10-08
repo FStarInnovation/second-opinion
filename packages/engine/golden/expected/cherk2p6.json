@@ -3,10 +3,11 @@
   "report": {
     "schema": "bond_report@1",
     "product_type": "bond",
-    "built_at": "2026-10-08T10:33:47.958Z",
+    "built_at": "2026-10-08T11:36:43.325Z",
     "data_time": {
       "updatetime": "13:13:00",
-      "trade_date": "2026-10-08"
+      "trade_date": "2026-10-08",
+      "line": "Данные Мосбиржи на 13:13 МСК, 08.10.2026. Задержка до 15 минут"
     },
     "security": {
       "secid": "RU000A10G6Z1",
@@ -87,12 +88,13 @@
       "spread_missing_side": false,
       "position_size": 500000,
       "share_pct": 0.53,
-      "exit_now_pct": 0.04,
-      "exit_now_money": 175,
+      "exit_now_pct": 0.0351,
+      "exit_now_money": 176,
       "exit_days": 1,
       "category": "норм",
       "no_exit": false,
-      "line": "При позиции 500 000 ₽ стоимость моментального выхода ≈ 0,04%, аккуратного выхода ≈ 1 день. Категория ликвидности — норм."
+      "line": "При позиции 500 000 ₽ стоимость моментального выхода ≈ 0,04%, аккуратного выхода ≈ 1 день. Категория ликвидности — норм.",
+      "metrics_line": "За 9 торговых дней: средний оборот 95,0 млн ₽ в день, 185 сделок в день; спред 0,07%."
     },
     "fees_tax": {
       "k_pct": null,
@@ -223,9 +225,7 @@
       "data_line",
       "product",
       "yield",
-      "price_line",
       "liquidity",
-      "worst",
       "flags_score",
       "plaque"
     ],

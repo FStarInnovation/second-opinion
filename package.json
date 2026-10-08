@@ -1,9 +1,16 @@
 {
   "name": "second-opinion",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "tools/*"
+  ],
   "scripts": {
-    "build": "npm run -w @so/engine build",
-    "selftest": "npm run -w @so/engine selftest"
+    "selftest": "npm run -w @so/engine selftest",
+    "golden:diff": "npm run -w @so/engine golden:diff",
+    "pages": "npm run -w @so/static build",
+    "validate": "npm run -w @so/validate validate",
+    "check": "npm run selftest && npm run pages && npm run validate"
   }
 }
