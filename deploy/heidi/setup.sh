@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Разовая настройка сервера heidi (AlmaLinux 10) под Second opinion.
-# Запуск с Mac:  ssh heidi 'bash -s' < deploy/heidi/setup.sh
-# Нужен sudo без пароля или с паролем (спросит один раз). Повторный запуск безопасен.
+# Запуск с Mac (sudo спросит пароль — поэтому копируем файл и запускаем с терминалом, а не через bash -s):
+#   scp deploy/heidi/setup.sh heidi:setup.sh && ssh -t heidi bash setup.sh
+# Повторный запуск безопасен.
 set -euo pipefail
 
 APP_USER="${APP_USER:-$USER}"              # под кем работает сервис (ez)

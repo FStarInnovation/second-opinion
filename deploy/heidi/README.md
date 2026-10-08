@@ -8,12 +8,16 @@
 
 ```
 cd ~/ТафсТендер/second-opinion
-ssh heidi 'bash -s' < deploy/heidi/setup.sh
+scp deploy/heidi/setup.sh heidi:setup.sh
+ssh -t heidi bash setup.sh
 git remote add heidi ez@heidi:git/second-opinion.git
 git push heidi e2-blocks-page:main
 ssh heidi nano /opt/second-opinion/apps/web/.env
 ssh heidi 'bash -s' < deploy/heidi/deploy.sh
 ```
+
+`setup.sh` запускается с терминалом (`ssh -t`), потому что sudo спрашивает пароль; через `bash -s` пароль ввести некуда.
+`deploy.sh` после этого работает через `bash -s`: перезапуск сервиса разрешён без пароля (sudoers).
 
 `.env` на сервере — тот же набор, что на Mac (ANTHROPIC_API_KEY, LLM_PROVIDER=anthropic, TYPESAFE_API_KEY, MOCK_LLM=0),
 плюс `SO_DAILY_BUDGET_USD=2`. Ключи вводятся руками в nano, в чат и в репозиторий не попадают.
