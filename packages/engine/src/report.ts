@@ -116,7 +116,7 @@ export function assembleReport(
   const metricsLine = b.stop
     ? null
     : !liq.avg
-      ? `За ${b.nDays} торговых дней сделок не было.`
+      ? (b.nDays ? `За ${b.nDays} торговых дней сделок не было.` : `Сделок за последние ${CONFIG.liq.windowDays} дней не было.`)
       : `За ${b.nDays} торговых дней: средний оборот ${mln(liq.avg)} в день, ${fmt(b.avgNT ?? 0, 0)} ${plural(Math.round(b.avgNT ?? 0), "сделка", "сделки", "сделок")} в день; ` +
         (liq.spread == null ? "спред не определить — нет встречных заявок." : `спред ${fmt(liq.spread, 2)}%.`);
 

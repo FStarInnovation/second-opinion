@@ -29,7 +29,8 @@ export const CONFIG = {
     [50, "Много рисков"],
     [0, "Высокий риск"],
   ] as const,
-  liq: { goodTurnover: 10e6, midTurnover: 1e6, dayShare: 0.2 },
+  /** windowDays — окно запроса №4 (П13): 35 календарных дней, из них последние ≤20 торговых */
+  liq: { goodTurnover: 10e6, midTurnover: 1e6, dayShare: 0.2, windowDays: 35 },
   fxShock: 0.1,
   controlWarnPp: 0.5,
   controlFailPp: 5,

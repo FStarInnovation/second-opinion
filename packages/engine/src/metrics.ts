@@ -185,7 +185,9 @@ export function liquidity(b: BondFacts, pos: number): Liquidity {
   let share: number | null = null, days: number | null = null;
   if (avg && avg > 0) { share = (pos / avg) * 100; days = pos / (avg * CONFIG.liq.dayShare); }
   const cat: Liquidity["cat"] =
-    avg == null ? "—" : avg > CONFIG.liq.goodTurnover ? "норм" : avg >= CONFIG.liq.midTurnover ? "умеренно" : "низкая";
+    b.stop ? "—" // не торгуется — категории нет
+    : avg == null || avg < CONFIG.liq.midTurnover ? "низкая" // нет сделок в окне — тоже «низкая», а не «неизвестно»
+    : avg > CONFIG.liq.goodTurnover ? "норм" : "умеренно";
   const exitPct = spread == null ? null : spread / 2;
   const exitDays = days == null ? null : Math.max(1, Math.ceil(days));
   const noExit = b.stop || avg === 0;
@@ -224,11 +226,12 @@ export function flags(
     "Рынок оценивает кредитный риск эмитента как существенный.",
     prem, b.g != null && b.g > C.premiumHighBp ? C.premiumHighPts : C.premiumPts,
     fl ? "не считается для флоатеров" : "GSPREADBP = " + (b.g ?? "нет") + " б.п.");
-  const illiq = b.avg != null && (b.avg < C.illiqTurnover || (b.avgNT ?? 0) < C.illiqTrades);
+  // Нет данных о торгах у торгуемой бумаги — это тоже «мало сделок», а не «неизвестно»
+  const illiq = !b.stop && (b.avg == null || b.avg < C.illiqTurnover || (b.avgNT ?? 0) < C.illiqTrades);
   add(4, "Неликвидный выпуск",
     "Мало оборота или сделок — выйти из позиции сложно.",
     illiq, C.illiqPts,
-    `за ${b.nDays} дн.: ${mln(b.avg)}/день, ${fmt(b.avgNT ?? 0, 0)} сделок/день`);
+    b.nDays ? `за ${b.nDays} дн.: ${mln(b.avg)}/день, ${fmt(b.avgNT ?? 0, 0)} сделок/день` : `сделок за последние ${CONFIG.liq.windowDays} дней не было`);
   add(5, "Широкий спред",
     liq.missing
       ? "В стакане нет встречных заявок — быстро продать по справедливой цене нельзя."
@@ -236,7 +239,7 @@ export function flags(
     liq.missing || (liq.spread != null && liq.spread > C.spreadPct), C.spreadPts,
     liq.missing ? "нет BID или OFFER" : "спред " + pctS(liq.spread));
   add(6, "Не торгуется", "Биржевых торгов нет — выйти через биржу нельзя.",
-    b.stop, C.notTradedPts, b.stop ? "is_traded = 0" : "торгуется");
+    b.stop, C.notTradedPts, !b.stop ? "торгуется" : b.boardid ? "is_traded = 0" : "нет режима биржевых торгов bonds/stock");
   const durY = (b.durDays ?? 0) / 365;
   add(7, "Длинная дюрация", "Цена сильно реагирует на изменение ставок.",
     !fl && durY > C.longDurYears, C.longDurPts,

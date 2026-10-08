@@ -9,7 +9,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "./build";
-import { shift, solve, termPhrase } from "./metrics";
+import { flags, liquidity, shift, solve, termPhrase, type YieldModel } from "./metrics";
+import type { BondFacts } from "./iss/facts";
 import { applyInputs } from "./inputs";
 import { BondReport } from "./contract";
 
@@ -34,6 +35,36 @@ ok("termPhrase: 365 дней → 1 год", termPhrase(365) === "1 год");
 // Нулевой купон (блок 4): y = (N/P)^(365/D) − 1; решатель должен дать то же
 const y0 = solve(950, [[1, 1000]]);
 ok("solve: дисконтная бумага 950→1000 за год ≈ 5,26%", y0 != null && Math.abs(y0 - (1000 / 950 - 1) * 100) < 0.01, String(y0));
+
+// Бумага без торгов (08.10.2026: купон 0%, нет цены, ни одной сделки — а Truth Score был 90).
+// Два пути: а) режима bonds/stock нет вовсе → «не торгуется» (флаг 6); б) режим есть, но в окне ни одной сделки → флаг 4.
+const noTrade = (over: Partial<BondFacts>): BondFacts => ({
+  secid: "X", isin: null, boardid: null, shortname: "X", secname: null, regnumber: null, emit: null, kind: null,
+  todayIso: "2026-10-08", face: 1000, fu: "SUR", acc: 0, cp: 0, period: null, matIso: "2026-11-08", daysMat: 31,
+  nextCouponIso: null, ctype: "zero", r0: null, coupons: [], amortFuture: [], amortized: false,
+  offerKind: "none", offerDateIso: null, offerPrice: null, offerPriceAssumedPar: false, reset: false,
+  wap: null, prevWap: null, bid: null, offerQ: null, upd: null, tradeDateIso: null,
+  moexY: null, moexYPrice: null, moexYDatetype: null, g: null, durDays: null,
+  stop: false, lvl: 3, qual: false, hasDefault: false, avg: null, avgNT: null, nDays: 0, ...over,
+});
+const ymNone = { status: "noPrice", main: null } as unknown as YieldModel;
+{
+  const b = noTrade({ stop: true }); // а) boards пуст → facts.ts ставит stop
+  const liq = liquidity(b, 100_000);
+  const f = flags(b, ymNone, liq, null);
+  ok("не торгуется: флаг 6 горит, флаг 4 нет", f.fired.some((x) => x.id === 6) && !f.fired.some((x) => x.id === 4), f.fired.map((x) => x.id).join(","));
+  ok("не торгуется: score ≤ 60 (−40 за флаг 6)", f.score <= 60, String(f.score));
+  ok("не торгуется: категория «—», noExit", liq.cat === "—" && liq.noExit, liq.cat);
+}
+{
+  const b = noTrade({ boardid: "TQCB" }); // б) режим есть, сделок в окне нет
+  const liq = liquidity(b, 100_000);
+  const f = flags(b, ymNone, liq, null);
+  ok("нет сделок в окне: флаг 4 горит", f.fired.some((x) => x.id === 4), f.fired.map((x) => x.id).join(","));
+  ok("нет сделок в окне: категория «низкая»", liq.cat === "низкая", liq.cat);
+  ok("нет сделок в окне: детали флага 4 без «за 0 дн.»", !f.fired.find((x) => x.id === 4)!.details.includes("0 дн"), f.fired.find((x) => x.id === 4)!.details);
+  ok("нет сделок в окне: score < 90 (листинг 3 + неликвид + спред)", f.score <= 65, String(f.score));
+}
 
 /* 2. Golden-кейсы из снимков */
 const meta = JSON.parse(fs.readFileSync(path.join(goldenDir, "cases.json"), "utf8")) as {

@@ -3,6 +3,7 @@
  * Поля и правила — из раздела «Источники данных» сводной постановки.
  */
 import { issJson, rows, toNum, isoDateOrNull, q, type FetchOptions } from "./client";
+import { CONFIG } from "../config";
 
 export interface CouponRow {
   dateIso: string;
@@ -57,7 +58,7 @@ export interface BondFacts {
   g: number | null; // GSPREADBP
   durDays: number | null; // DURATION, дней
 
-  stop: boolean; // is_traded = 0 во всех режимах bonds/stock (флаг 6)
+  stop: boolean; // флаг 6: is_traded = 0 во всех режимах bonds/stock — или режимов нет вовсе (boardid = null)
   lvl: number | null; // LISTLEVEL (№2)
   qual: boolean; // ISQUALIFIEDINVESTORS (№2)
   hasDefault: boolean; // HASDEFAULT | HASTECHNICALDEFAULT (№2)
@@ -89,7 +90,10 @@ export async function collectFacts(
     boardid: string; market: string; engine: string; is_traded: number; is_primary: number;
   }>(d2, "boards").filter((b) => b.market === "bonds" && b.engine === "stock");
   const primary = boards.find((b) => b.is_primary === 1) ?? boards[0] ?? null;
-  const stop = boards.length > 0 && boards.every((b) => b.is_traded === 0);
+  // «Не торгуется» (флаг 6): все режимы с is_traded = 0 — ИЛИ у бумаги вовсе нет режима биржевых торгов
+  // облигациями (внебиржевой / коммерческий выпуск): купить-продать через стакан нельзя, данных №1/№4 нет.
+  // Раньше такой выпуск проходил как «нет цены» с пустой ликвидностью и получал 90 баллов (08.10.2026).
+  const stop = boards.length === 0 || boards.every((b) => b.is_traded === 0);
   const boardid = primary?.boardid ?? null;
 
   // emitent_title — только в поиске (сверка с живым ISS 08.10.2026)
@@ -119,10 +123,10 @@ export async function collectFacts(
   const amortRows = rows<Record<string, unknown>>(d3, "amortizations");
   const offerRows = rows<Record<string, unknown>>(d3, "offers");
 
-  // №4: окно 35 календарных дней, последние ≤20 торговых (П13)
+  // №4: окно CONFIG.liq.windowDays календарных дней, последние ≤20 торговых (П13)
   let avg: number | null = null, avgNT: number | null = null, nDays = 0;
   if (boardid && !stop) {
-    const from = new Date(Date.parse(todayIso) - 35 * 86_400_000).toISOString().slice(0, 10);
+    const from = new Date(Date.parse(todayIso) - CONFIG.liq.windowDays * 86_400_000).toISOString().slice(0, 10);
     const d4 = await issJson(q.n4(boardid, secid, from, todayIso), opts);
     const hist = rows<{ TRADEDATE: string; VALUE: unknown; NUMTRADES: unknown }>(d4, "history");
     const last = hist.slice(-20);
@@ -156,7 +160,8 @@ export async function collectFacts(
   let ctype: BondFacts["ctype"];
   if (secid.startsWith("SU52")) ctype = "linker";
   else if (/плавающ/i.test(bondtype)) ctype = "float";
-  else if (cp === null && coupons.every((c) => !c.value)) ctype = "zero";
+  // Дисконтная бумага: COUPONPERCENT пуст или 0 и ни одного ненулевого купона в графике
+  else if ((cp === null || cp === 0) && coupons.every((c) => !c.value)) ctype = "zero";
   else ctype = "fixed";
 
   // Текущая ставка флоатера = value последнего выплаченного купона (П9)
