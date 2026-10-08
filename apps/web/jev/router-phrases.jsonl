@@ -48,3 +48,7 @@
 {"text":"26","report_shown":true,"intent":"set_promised","ambiguous":true}
 {"text":"1 000 000","report_shown":true,"intent":"set_position","ambiguous":true}
 {"text":"0,3","report_shown":true,"intent":"set_commission","ambiguous":true}
+{"text": "ОФЗ-26243-ПД", "report_shown": false, "intent": "check_security"}
+{"text": "ОФЗ-26243-ПД как тебе такая бумага?", "report_shown": false, "intent": "check_security"}
+{"text": "офз 29014 стоит брать?", "report_shown": false, "intent": "check_security"}
+{"text": "26243", "report_shown": false, "intent": "check_security", "ambiguous": true}

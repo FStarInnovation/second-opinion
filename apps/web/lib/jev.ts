@@ -35,6 +35,7 @@ export interface RouteDecision {
   mentionsSecurity: number; // Noul: есть ли в тексте идентификатор бумаги
   source: "jev" | "rules";
   usage?: { inputTokens?: number; cost?: number };
+  jevError?: string; // источник rules при включённом Jev: почему не Jev (HTTP-код, таймаут) — без ключа
 }
 
 export interface PromiseDecision {
@@ -100,7 +101,7 @@ export async function jevDecide(state: Record<string, unknown>, questions: Recor
     body: JSON.stringify({ model: ep.model, state, questions }),
     signal: signal ?? AbortSignal.timeout(Number(process.env.JEV_TIMEOUT_MS ?? 2500)),
   });
-  if (!res.ok) throw new Error(`Jev ${p} HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`Jev ${p} HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 160)}`);
   return (await res.json()) as DecisionResponse;
 }
 const noulOf = (a: Answer | undefined) => (a?.type === "noul" ? a.noul ?? a.probability ?? 0 : 0);
@@ -146,6 +147,8 @@ export function routeByRules(text: string, hasReport: boolean): RouteDecision {
   const issueCode = /(^|\s)[а-яa-z]*\d+[а-яa-z]+\d*|(^|\s)[а-яa-z]+\d{2,}|\d[a-zа-я]\d{2}-\d{2}-|^\d+-\d+-[a-z0-9а-я]{5}/i;
 
   if (ISIN_RE.test(text)) return hit("check_security", 1);
+  // ОФЗ в любой записи: «ОФЗ-26243-ПД», «офз 26243», «ОФЗ-ПК 29014» — имя бумаги, даже внутри вопроса
+  if (/(^|\s)(офз|ofz)[\s-]*(п[дкв]|ин|ад)?[\s-]*\d{5}(\b|$)/i.test(t)) return hit("check_security", 1);
   if (/^(проверь|проверьте|проверить|посмотри|посмотрите|что скажешь|оцени|оцените|разбери)( |$)/.test(t)) return hit("check_security", 1);
   if (promiseWords.test(t) && nums.length) {
     if (hasReport) return hit("set_promised");
@@ -162,6 +165,7 @@ export function routeByRules(text: string, hasReport: boolean): RouteDecision {
   if (hasReport && /почему|зачем|стоит ли|как |чем |риск|балл|скор|держать|оферт|вопрос|если/.test(t)) return low("ask_about_report");
   if (issueCode.test(t) && words.length <= 6) return hit("check_security", 1);
   if (/^\d{1,2}[).]?$/.test(t)) return low(hasReport ? "set_promised" : "check_security", 0.5); // голое число — пусть решает модель
+  if (/^\d{5}$/.test(t)) return low("check_security", 0.6); // «26243» — похоже на номер ОФЗ, но пусть подтвердит модель
   // одно-два слова без глагола («Черкизово», «Самолет БО») — похоже на имя эмитента, но уверенности нет
   if (!hasReport && /^[а-яa-z][а-яa-z.\- ]{2,40}$/.test(t) && words.length <= 3) return low("check_security", 0.6);
   return low("ask_about_report");
@@ -213,9 +217,9 @@ export async function routeMessage(text: string, hasReport: boolean, lastAssista
       mentionsSecurity: noulOf(m), source: "jev",
       usage: { inputTokens: res.usage?.input_tokens, cost: res.usage?.cost },
     };
-  } catch {
-    // Jev недоступен — падаем на правила, диалог не ломаем
-    return routeByRules(text, hasReport);
+  } catch (e) {
+    // Jev недоступен — падаем на правила, диалог не ломаем; причину пишем в журнал (route.ts → jev_error)
+    return { ...routeByRules(text, hasReport), jevError: String(e instanceof Error ? e.message : e).slice(0, 200) };
   }
 }
 

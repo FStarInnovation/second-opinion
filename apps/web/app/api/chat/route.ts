@@ -51,13 +51,16 @@ export async function POST(req: Request) {
         ...(gate.decision ? { intent: gate.decision.intent, confidence: gate.decision.confidence, source: gate.decision.source } : {}),
         handled: gate.handled,
         ...(gate.decision?.source === "jev" ? { jev_in: jevIn, jev_cost: gate.decision.usage?.cost ?? estimateCost("jev", jevIn ?? 0) } : {}),
+        ...(gate.decision?.jevError ? { jev_error: gate.decision.jevError } : {}),
       });
       if (gate.handled) return;
 
       /* 2. Модель с инструментами */
+      // Системный промпт с cache-breakpoint (ai 7: instructions вместо system): Claude API кэширует префикс
+      // «инструменты + система» (~2,7k токенов), повторные вызовы платят за него 10%. OpenRouter/mock ключ игнорируют.
       const result = streamText({
         model: chatModel(),
-        system: SYSTEM_PROMPT,
+        instructions: { role: "system", content: SYSTEM_PROMPT, providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } },
         messages: await convertToModelMessages(messages, { tools }),
         tools,
         stopWhen: stepCountIs(4),
