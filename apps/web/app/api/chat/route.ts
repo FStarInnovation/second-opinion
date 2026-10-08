@@ -11,6 +11,7 @@ import { SYSTEM_PROMPT } from "@/lib/prompt";
 import { getSession, MESSAGE_LIMIT } from "@/lib/session";
 import { runGate } from "@/lib/gate";
 import { jevProvider } from "@/lib/jev";
+import { appendUsage, estimateCost } from "@/lib/usage-log";
 
 export const maxDuration = 60;
 
@@ -44,7 +45,13 @@ export async function POST(req: Request) {
     execute: async ({ writer }) => {
       /* 1. Jev-гейт */
       const gate = text ? await runGate(writer, session, text, textOf(lastAssistant) || null) : { handled: false, decision: null };
-      log({ chat: session.id, step: "gate", text: text.slice(0, 80), ...(gate.decision ? { intent: gate.decision.intent, confidence: gate.decision.confidence, source: gate.decision.source } : {}), handled: gate.handled });
+      const jevIn = gate.decision?.usage?.inputTokens;
+      log({
+        chat: session.id, step: "gate", text: text.slice(0, 80),
+        ...(gate.decision ? { intent: gate.decision.intent, confidence: gate.decision.confidence, source: gate.decision.source } : {}),
+        handled: gate.handled,
+        ...(gate.decision?.source === "jev" ? { jev_in: jevIn, jev_cost: gate.decision.usage?.cost ?? estimateCost("jev", jevIn ?? 0) } : {}),
+      });
       if (gate.handled) return;
 
       /* 2. Модель с инструментами */
@@ -57,14 +64,19 @@ export async function POST(req: Request) {
         providerOptions: callProviderOptions(),
         onStepFinish: ({ usage, response, toolCalls, providerMetadata }) => {
           const or = (providerMetadata as { openrouter?: { usage?: { cost?: number; promptTokensDetails?: { cachedTokens?: number } } } } | undefined)?.openrouter;
+          const model = response.modelId ?? modelLabel();
+          const cached = usage.inputTokenDetails?.cacheReadTokens ?? or?.usage?.promptTokensDetails?.cachedTokens ?? 0;
+          // OpenRouter отдаёт cost сам; Claude API — считаем по прайсу
+          const cost = or?.usage?.cost ?? estimateCost(model, usage.inputTokens ?? 0, usage.outputTokens ?? 0, cached) ?? 0;
           session.usage.calls += 1;
           session.usage.input += usage.inputTokens ?? 0;
           session.usage.output += usage.outputTokens ?? 0;
-          session.usage.cost += or?.usage?.cost ?? 0;
+          session.usage.cost += cost;
           log({
-            chat: session.id, step: "llm", provider: provider(), model: response.modelId ?? modelLabel(),
-            in: usage.inputTokens, cached: usage.inputTokenDetails?.cacheReadTokens ?? or?.usage?.promptTokensDetails?.cachedTokens, out: usage.outputTokens,
-            cost: or?.usage?.cost, tools: toolCalls.map((t) => t.toolName),
+            chat: session.id, step: "llm", provider: provider(), model,
+            in: usage.inputTokens, cached, out: usage.outputTokens, cost: Math.round(cost * 1e6) / 1e6,
+            cost_source: or?.usage?.cost != null ? "provider" : "price-list",
+            tools: toolCalls.map((t) => t.toolName),
           });
         },
       });
@@ -82,6 +94,8 @@ export async function POST(req: Request) {
 }
 
 function log(rec: Record<string, unknown>) {
+  const full = { t: new Date().toISOString(), ...rec };
+  appendUsage(full);
   if (process.env.SO_QUIET === "1") return;
-  console.log("[chat]", JSON.stringify({ t: new Date().toISOString(), ...rec }));
+  console.log("[chat]", JSON.stringify(full));
 }

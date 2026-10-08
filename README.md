@@ -62,6 +62,7 @@ cp apps/web/.env.example apps/web/.env   # вписать OPENROUTER_API_KEY; б
 npm run web:dev                          # http://localhost:3000 — форма, /check, /chat
 npm run e2e:chat                         # сценарии чата на запущенном сервере (SO_OFFLINE=1 MOCK_LLM=1)
 cd apps/web && npx tsx --env-file=.env scripts/jev-eval.ts --jev   # маршрутизатор на 50 фразах, живой Jev
+cd apps/web && npx tsx scripts/usage-report.ts                       # сколько потратили: журнал .usage/usage.jsonl
 
 cd packages/engine
 npx tsx src/cli.ts "РОЛЬФ 1Р07" --promised 26          # живой ISS
