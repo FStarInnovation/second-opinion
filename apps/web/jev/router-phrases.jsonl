@@ -46,7 +46,7 @@
 {"text":"напиши стих про облигации","report_shown":false,"intent":"out_of_scope"}
 {"text":"какая погода в Москве","report_shown":false,"intent":"out_of_scope"}
 {"text":"26","report_shown":true,"intent":"set_promised","ambiguous":true}
-{"text":"1 000 000","report_shown":true,"intent":"set_position","ambiguous":true}
+{"text":"1 000 000","report_shown":true,"intent":"set_position"}
 {"text":"0,3","report_shown":true,"intent":"set_commission","ambiguous":true}
 {"text": "ОФЗ-26243-ПД", "report_shown": false, "intent": "check_security"}
 {"text": "ОФЗ-26243-ПД как тебе такая бумага?", "report_shown": false, "intent": "check_security"}
