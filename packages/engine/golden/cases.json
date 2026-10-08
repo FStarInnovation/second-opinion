@@ -1,0 +1,17 @@
+{
+  "todayIso": "2026-10-08",
+  "note": "Снимки ISS от 2026-10-08; эталоны сверены с биржевыми полями (Δ ≤ 0,5 п.п.) и методикой сводной постановки",
+  "cases": [
+    { "name": "ofz26238", "query": "RU000A1038V6", "inputs": {}, "checks": "базовая ветка, SECID ≠ ISIN, длинная дюрация" },
+    { "name": "rolf", "query": "RU000A10ASE2", "inputs": { "promised_pct": 26 }, "checks": "премия за риск, флаг 12 (−30)" },
+    { "name": "veb", "query": "RU000A0JS4Z7", "inputs": { "promised_pct": 18 }, "checks": "put-оферта, неликвид, широкий спред" },
+    { "name": "cherk1p7", "query": "RU000A1094F2", "inputs": {}, "checks": "флоатер: 3 сценария, биржевая доходность не используется" },
+    { "name": "cherk2p2", "query": "RU000A10C5F9", "inputs": {}, "checks": "колл ≤ 30 дней: доход за период" },
+    { "name": "cherk2p1", "query": "RU000A10B4V0", "inputs": {}, "checks": "валютная CNY: НКД по П12" },
+    { "name": "cherk2p6", "query": "RU000A10G6Z1", "inputs": {}, "checks": "флоатер без выплаченных купонов: не рассчитана" },
+    { "name": "cherk1p6", "query": "RU000A105M67", "inputs": {}, "checks": "нет цены: ask_price; листинг 3 + неликвид + спред = 65" },
+    { "name": "pick-cherkizovo", "query": "Черкизово", "inputs": {}, "checks": "экран выбора по эмитенту" },
+    { "name": "pick-program", "query": "4-01-10797-A-001P", "inputs": {}, "checks": "перебор 4B02-01…30 по номеру программы" },
+    { "name": "notfound", "query": "RU000A10E2A5", "inputs": {}, "checks": "не найдена, ISIN корректного формата" }
+  ]
+}

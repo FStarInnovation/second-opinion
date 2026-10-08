@@ -1,0 +1,244 @@
+{
+  "kind": "report",
+  "report": {
+    "schema": "bond_report@1",
+    "product_type": "bond",
+    "built_at": "2026-10-08T10:33:47.958Z",
+    "data_time": {
+      "updatetime": "13:13:00",
+      "trade_date": "2026-10-08"
+    },
+    "security": {
+      "secid": "RU000A10G6Z1",
+      "isin": "RU000A10G6Z1",
+      "boardid": "TQCB",
+      "shortname": "ЧеркизБ2P6",
+      "name": "ГруппаЧеркизово БО-002P-06",
+      "regnumber": "4B02-06-10797-A-002P",
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\"",
+      "typename": "Биржевая облигация"
+    },
+    "status": {
+      "kind": "no_coupon_rate",
+      "reason": "ставка первого купона ещё не опубликована"
+    },
+    "product": {
+      "plain_text": "Биржевая облигация Публичное акционерное общество \"Группа Черкизово\" на 2,9 года, плавающий купон, без амортизации, без оферты. Номинал в рублях.",
+      "coupon_kind": "float",
+      "coupon_label": "плавающий",
+      "amortization": false,
+      "offer": {
+        "type": "none",
+        "date": null,
+        "price_pct": null,
+        "price_assumed_par": false,
+        "days_to": null
+      },
+      "faceunit": "SUR",
+      "currency_word": "рублях",
+      "listlevel": 1,
+      "qualified": false,
+      "maturity_date": "09.09.2029"
+    },
+    "claim": {
+      "promised_pct": null,
+      "promised_text": null,
+      "source": null,
+      "gap_pp": null,
+      "line": null
+    },
+    "yield": {
+      "kind": "not_calculated",
+      "horizon": null,
+      "horizon_date": "09.09.2029",
+      "horizon_label": "погашения 09.09.2029",
+      "values": [],
+      "main_pct": null,
+      "period_income": null,
+      "exchange": {
+        "pct": null,
+        "price_pct": null,
+        "datetype": null,
+        "used_as_main": false
+      },
+      "own_control_pct": null,
+      "control_diff_pp": null,
+      "not_calculated_reason": "Не рассчитана: ставка первого купона ещё не опубликована",
+      "line": "Не рассчитана: ставка первого купона ещё не опубликована"
+    },
+    "price": {
+      "clean_pct": 99.8,
+      "prev_used": false,
+      "from_user": false,
+      "facevalue": 1000,
+      "accruedint": 5.93,
+      "full_price": null,
+      "clean_price": null,
+      "next_coupon_date": "25.10.2026",
+      "currency": "RUB",
+      "line": null
+    },
+    "liquidity": {
+      "traded": true,
+      "avg_turnover": 94985233,
+      "days_counted": 9,
+      "trades_per_day": 185.33,
+      "spread_pct": 0.07,
+      "spread_missing_side": false,
+      "position_size": 500000,
+      "share_pct": 0.53,
+      "exit_now_pct": 0.04,
+      "exit_now_money": 175,
+      "exit_days": 1,
+      "category": "норм",
+      "no_exit": false,
+      "line": "При позиции 500 000 ₽ стоимость моментального выхода ≈ 0,04%, аккуратного выхода ≈ 1 день. Категория ликвидности — норм."
+    },
+    "fees_tax": {
+      "k_pct": null,
+      "k_grid": [],
+      "pre_tax_pct": null,
+      "post_tax_pct": null,
+      "tax_note": "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
+      "line": "Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: — до налога по графику выплат и — после налога 13%."
+    },
+    "worst": [],
+    "flags": [
+      {
+        "id": 1,
+        "title": "Только для квалифицированных инвесторов",
+        "text": "Регулятор признал инструмент сложным для массового инвестора.",
+        "fired": false,
+        "points": 0,
+        "details": "ISQUALIFIEDINVESTORS = 0"
+      },
+      {
+        "id": 2,
+        "title": "Низкий уровень листинга",
+        "text": "Минимальные требования биржи к эмитенту по раскрытию информации.",
+        "fired": false,
+        "points": 0,
+        "details": "LISTLEVEL = 1"
+      },
+      {
+        "id": 3,
+        "title": "Высокая премия за риск",
+        "text": "Рынок оценивает кредитный риск эмитента как существенный.",
+        "fired": false,
+        "points": 0,
+        "details": "не считается для флоатеров"
+      },
+      {
+        "id": 4,
+        "title": "Неликвидный выпуск",
+        "text": "Мало оборота или сделок — выйти из позиции сложно.",
+        "fired": false,
+        "points": 0,
+        "details": "за 9 дн.: 95,0 млн ₽/день, 185 сделок/день"
+      },
+      {
+        "id": 5,
+        "title": "Широкий спред",
+        "text": "Большая разница между ценой покупки и продажи — потеря при каждой сделке.",
+        "fired": false,
+        "points": 0,
+        "details": "спред 0,07%"
+      },
+      {
+        "id": 6,
+        "title": "Не торгуется",
+        "text": "Биржевых торгов нет — выйти через биржу нельзя.",
+        "fired": false,
+        "points": 0,
+        "details": "торгуется"
+      },
+      {
+        "id": 7,
+        "title": "Длинная дюрация",
+        "text": "Цена сильно реагирует на изменение ставок.",
+        "fired": false,
+        "points": 0,
+        "details": "не считается для флоатеров"
+      },
+      {
+        "id": 8,
+        "title": "Эмитент может погасить досрочно (call)",
+        "text": "Эмитент может погасить выпуск в выгодный для себя момент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 9,
+        "title": "Ставка после оферты неизвестна",
+        "text": "После оферты ставку купона назначит эмитент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 10,
+        "title": "Валютный риск",
+        "text": "Номинал не в рублях — к риску облигации добавляется курсовой.",
+        "fired": false,
+        "points": 0,
+        "details": "FACEUNIT = SUR"
+      },
+      {
+        "id": 11,
+        "title": "Плавающий купон",
+        "text": "Доход зависит от рыночной ставки и снизится вместе с ней.",
+        "fired": true,
+        "points": 5,
+        "details": "BONDTYPE: плавающий"
+      },
+      {
+        "id": 12,
+        "title": "Обещанная доходность выше реальной",
+        "text": "Вам обещали больше, чем бумага даёт на самом деле.",
+        "fired": false,
+        "points": 0,
+        "details": "заявленная не указана"
+      },
+      {
+        "id": 13,
+        "title": "Дефолт в истории выпуска",
+        "text": "По выпуску уже был дефолт или технический дефолт.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      }
+    ],
+    "truth_score": {
+      "score": 95,
+      "grade": "Прозрачный продукт",
+      "top3": [
+        11
+      ],
+      "more_count": 0,
+      "none_fired": false
+    },
+    "macro": null,
+    "panels": [
+      "data_line",
+      "product",
+      "yield",
+      "price_line",
+      "liquidity",
+      "worst",
+      "flags_score",
+      "plaque"
+    ],
+    "inputs": {
+      "position_size": 500000,
+      "k_pct": null,
+      "promised_pct": null,
+      "offer_price_pct": null
+    },
+    "diagnostics": {
+      "snapshot_dir": "golden/snapshots/cherk2p6",
+      "control_diff_pp": null,
+      "warnings": []
+    }
+  }
+}

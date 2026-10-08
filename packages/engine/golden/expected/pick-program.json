@@ -1,0 +1,70 @@
+{
+  "kind": "pick",
+  "candidates": [
+    {
+      "secid": "RU000A105M67",
+      "isin": "RU000A105M67",
+      "shortname": "ЧеркизБ1P6",
+      "regnumber": "4B02-06-10797-A-001P",
+      "is_traded": true,
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+    },
+    {
+      "secid": "RU000A1094F2",
+      "isin": "RU000A1094F2",
+      "shortname": "ЧеркизБ1P7",
+      "regnumber": "4B02-07-10797-A-001P",
+      "is_traded": true,
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+    },
+    {
+      "secid": "RU000A0JVUJ0",
+      "isin": "RU000A0JVUJ0",
+      "shortname": "ЧеркизБ1P1",
+      "regnumber": "4B02-01-10797-A-001P",
+      "is_traded": false,
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+    },
+    {
+      "secid": "RU000A1013Y3",
+      "isin": "RU000A1013Y3",
+      "shortname": "ЧеркизБ1P2",
+      "regnumber": "4B02-02-10797-A-001P",
+      "is_traded": false,
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+    },
+    {
+      "secid": "RU000A1024W4",
+      "isin": "RU000A1024W4",
+      "shortname": "ЧеркизБ1P3",
+      "regnumber": "4B02-03-10797-A-001P",
+      "is_traded": false,
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+    },
+    {
+      "secid": "RU000A102LD1",
+      "isin": "RU000A102LD1",
+      "shortname": "ЧеркизБ1P4",
+      "regnumber": "4B02-04-10797-A-001P",
+      "is_traded": false,
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+    },
+    {
+      "secid": "RU000A105C28",
+      "isin": "RU000A105C28",
+      "shortname": "ЧеркизБ1P5",
+      "regnumber": "4B02-05-10797-A-001P",
+      "is_traded": false,
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+    },
+    {
+      "secid": "RU000A10B420",
+      "isin": "RU000A10B420",
+      "shortname": "ЧеркизБ1P8",
+      "regnumber": "4B02-08-10797-A-001P",
+      "is_traded": false,
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+    }
+  ],
+  "note": "Уточните выпуск"
+}

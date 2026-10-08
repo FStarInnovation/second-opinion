@@ -1,0 +1,9 @@
+{
+  "name": "second-opinion",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "npm run -w @so/engine build",
+    "selftest": "npm run -w @so/engine selftest"
+  }
+}

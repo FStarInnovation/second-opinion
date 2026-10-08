@@ -1,0 +1,160 @@
+/**
+ * Контракт bond_report@1 — единственный интерфейс между движком и любым рендером.
+ * Инвариант 3 плана: не хватает поля — расширяем контракт, а не считаем в UI.
+ * Методика: Claude Doc «Second opinion · Облигации: постановка с исправлениями и методика метрик».
+ */
+import { z } from "zod";
+
+export const SCHEMA_ID = "bond_report@1" as const;
+
+export const StatusKind = z.enum(["ok", "no_price", "not_traded", "no_coupon_rate"]);
+
+export const PanelId = z.enum([
+  "data_line", "product", "claim", "yield", "price_line", "ask_price",
+  "liquidity", "fees", "worst", "flags_score", "macro", "plaque",
+]);
+
+const num = z.number().finite();
+const pct = num; // проценты годовых, 19.21 = 19,21%
+
+export const YieldValue = z.object({ label: z.string(), pct });
+
+export const BondReport = z.object({
+  schema: z.literal(SCHEMA_ID),
+  product_type: z.literal("bond"),
+  built_at: z.string(), // ISO
+  data_time: z.object({
+    updatetime: z.string().nullable(), // HH:MM:SS МСК
+    trade_date: z.string().nullable(), // YYYY-MM-DD
+  }),
+  security: z.object({
+    secid: z.string(),
+    isin: z.string().nullable(),
+    boardid: z.string().nullable(),
+    shortname: z.string(),
+    name: z.string().nullable(),
+    regnumber: z.string().nullable(),
+    emitent_title: z.string().nullable(),
+    typename: z.string().nullable(),
+  }),
+  status: z.object({
+    kind: StatusKind,
+    reason: z.string().nullable(),
+  }),
+  product: z.object({
+    plain_text: z.string(),
+    coupon_kind: z.enum(["fixed", "float", "zero", "linker"]),
+    coupon_label: z.string(),
+    amortization: z.boolean(),
+    offer: z.object({
+      type: z.enum(["put", "call", "none"]),
+      date: z.string().nullable(),
+      price_pct: num.nullable(),
+      price_assumed_par: z.boolean(), // «цена выкупа не раскрыта, принята равной номиналу»
+      days_to: num.nullable(),
+    }),
+    faceunit: z.string(),
+    currency_word: z.string(), // «рублях» / «юанях» / …
+    listlevel: num.nullable(),
+    qualified: z.boolean(),
+    maturity_date: z.string().nullable(),
+  }),
+  claim: z.object({
+    promised_pct: pct.nullable(), // null — блок скрыт
+    promised_text: z.string().nullable(),
+    source: z.enum(["field", "file"]).nullable(),
+    gap_pp: num.nullable(), // обещали − расчётная
+    line: z.string().nullable(), // «Обещали: … · На самом деле: … · Разница: …»
+  }),
+  yield: z.object({
+    kind: z.enum(["single", "scenarios", "period_income", "not_calculated"]),
+    horizon: z.enum(["maturity", "offer", "call"]).nullable(),
+    horizon_date: z.string().nullable(),
+    horizon_label: z.string().nullable(), // «погашения 15.05.2041»
+    values: z.array(YieldValue), // single: 1; scenarios: 3
+    main_pct: pct.nullable(), // число для сравнений (сценарий 1 у флоатера)
+    period_income: z
+      .object({ days: num, gain_money: num, gain_pct: num, date: z.string() })
+      .nullable(), // колл ≤ 30 дней
+    exchange: z.object({
+      pct: pct.nullable(), // EFFECTIVEYIELDWAPRICE (к дате YIELDDATETYPE)
+      price_pct: num.nullable(),
+      datetype: z.string().nullable(), // MATDATE | OFFER
+      used_as_main: z.boolean(),
+    }),
+    own_control_pct: pct.nullable(),
+    control_diff_pp: num.nullable(),
+    not_calculated_reason: z.string().nullable(),
+    line: z.string().nullable(), // готовая фраза вывода доходности
+  }),
+  price: z.object({
+    clean_pct: num.nullable(),
+    prev_used: z.boolean(), // PREVWAPRICE, «по вчерашней средневзвешенной»
+    from_user: z.boolean(), // ветка «нет цены», цена предложения
+    facevalue: num.nullable(),
+    accruedint: num.nullable(),
+    full_price: num.nullable(),
+    clean_price: num.nullable(),
+    next_coupon_date: z.string().nullable(),
+    currency: z.string(),
+    line: z.string().nullable(), // «Цена покупки … = … + НКД …; НКД вернётся …»
+  }),
+  liquidity: z.object({
+    traded: z.boolean(),
+    avg_turnover: num.nullable(),
+    days_counted: num,
+    trades_per_day: num.nullable(),
+    spread_pct: num.nullable(),
+    spread_missing_side: z.boolean(),
+    position_size: num,
+    share_pct: num.nullable(),
+    exit_now_pct: num.nullable(),
+    exit_now_money: num.nullable(),
+    exit_days: num.nullable(),
+    category: z.enum(["норм", "умеренно", "низкая", "—"]),
+    no_exit: z.boolean(),
+    line: z.string(),
+  }),
+  fees_tax: z.object({
+    k_pct: num.nullable(), // null — приглашение ввести
+    k_grid: z.array(z.tuple([num, pct.nullable(), pct.nullable()])), // [k, до налога, после]
+    pre_tax_pct: pct.nullable(),
+    post_tax_pct: pct.nullable(),
+    tax_note: z.string(),
+    line: z.string(),
+  }),
+  worst: z.array(z.object({ id: z.string(), title: z.string(), text: z.string() })),
+  flags: z.array(
+    z.object({
+      id: num.int().min(1).max(13),
+      title: z.string(),
+      text: z.string(),
+      fired: z.boolean(),
+      points: num,
+      details: z.string(),
+    }),
+  ),
+  truth_score: z.object({
+    score: num,
+    grade: z.string(),
+    top3: z.array(num.int()),
+    more_count: num,
+    none_fired: z.boolean(),
+  }),
+  macro: z.null(), // дополнение к П29 — на согласовании; появится отдельной схемой
+  panels: z.array(PanelId),
+  inputs: z.object({
+    position_size: num,
+    k_pct: num.nullable(),
+    promised_pct: pct.nullable(),
+    offer_price_pct: num.nullable(),
+  }),
+  diagnostics: z.object({
+    snapshot_dir: z.string().nullable(),
+    control_diff_pp: num.nullable(),
+    warnings: z.array(z.string()),
+  }),
+});
+
+export type BondReportT = z.infer<typeof BondReport>;
+export type PanelIdT = z.infer<typeof PanelId>;

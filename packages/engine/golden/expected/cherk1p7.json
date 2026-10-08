@@ -1,0 +1,300 @@
+{
+  "kind": "report",
+  "report": {
+    "schema": "bond_report@1",
+    "product_type": "bond",
+    "built_at": "2026-10-08T10:33:25.039Z",
+    "data_time": {
+      "updatetime": "13:17:00",
+      "trade_date": "2026-10-08"
+    },
+    "security": {
+      "secid": "RU000A1094F2",
+      "isin": "RU000A1094F2",
+      "boardid": "TQCB",
+      "shortname": "ЧеркизБ1P7",
+      "name": "ГруппаЧеркизово БО-001Р-07",
+      "regnumber": "4B02-07-10797-A-001P",
+      "emitent_title": "Публичное акционерное общество \"Группа Черкизово\"",
+      "typename": "Биржевая облигация"
+    },
+    "status": {
+      "kind": "ok",
+      "reason": null
+    },
+    "product": {
+      "plain_text": "Биржевая облигация Публичное акционерное общество \"Группа Черкизово\" на 9 мес., плавающий купон, сейчас ≈ 15,4% годовых, без амортизации, без оферты. Номинал в рублях.",
+      "coupon_kind": "float",
+      "coupon_label": "плавающий, сейчас ≈ 15,4%",
+      "amortization": false,
+      "offer": {
+        "type": "none",
+        "date": null,
+        "price_pct": null,
+        "price_assumed_par": false,
+        "days_to": null
+      },
+      "faceunit": "SUR",
+      "currency_word": "рублях",
+      "listlevel": 1,
+      "qualified": false,
+      "maturity_date": "15.07.2027"
+    },
+    "claim": {
+      "promised_pct": null,
+      "promised_text": null,
+      "source": null,
+      "gap_pp": null,
+      "line": null
+    },
+    "yield": {
+      "kind": "scenarios",
+      "horizon": "maturity",
+      "horizon_date": "15.07.2027",
+      "horizon_label": "погашения 15.07.2027",
+      "values": [
+        {
+          "label": "ставки не меняются",
+          "pct": 16.13
+        },
+        {
+          "label": "снижение ставок",
+          "pct": 14.93
+        },
+        {
+          "label": "высокие ставки дольше",
+          "pct": 17.99
+        }
+      ],
+      "main_pct": 16.13,
+      "period_income": null,
+      "exchange": {
+        "pct": null,
+        "price_pct": null,
+        "datetype": null,
+        "used_as_main": false
+      },
+      "own_control_pct": 16.13,
+      "control_diff_pp": null,
+      "not_calculated_reason": null,
+      "line": "Если ставки не изменятся — 16,13%, при снижении — 14,93%, если высокие дольше — 17,99%. Купон сейчас ≈ 15,4% годовых."
+    },
+    "price": {
+      "clean_pct": 100.18,
+      "prev_used": false,
+      "from_user": false,
+      "facevalue": 1000,
+      "accruedint": 8.83,
+      "full_price": 1010.63,
+      "clean_price": 1001.8,
+      "next_coupon_date": "18.10.2026",
+      "currency": "RUB",
+      "line": "Цена покупки 1 010,63 ₽ = 1 001,80 ₽ (100,18%) + НКД 8,83 ₽; НКД — не комиссия, вернётся с купоном 18.10.2026."
+    },
+    "liquidity": {
+      "traded": true,
+      "avg_turnover": 3032704,
+      "days_counted": 20,
+      "trades_per_day": 160.25,
+      "spread_pct": 0.01,
+      "spread_missing_side": false,
+      "position_size": 500000,
+      "share_pct": 16.49,
+      "exit_now_pct": 0,
+      "exit_now_money": 25,
+      "exit_days": 1,
+      "category": "умеренно",
+      "no_exit": false,
+      "line": "При позиции 500 000 ₽ стоимость моментального выхода ≈ 0,00%, аккуратного выхода ≈ 1 день. Категория ликвидности — умеренно."
+    },
+    "fees_tax": {
+      "k_pct": null,
+      "k_grid": [
+        [
+          0,
+          16.13,
+          13.9
+        ],
+        [
+          0.1,
+          15.97,
+          13.76
+        ],
+        [
+          0.3,
+          15.65,
+          13.49
+        ],
+        [
+          0.5,
+          15.33,
+          13.22
+        ],
+        [
+          1,
+          14.54,
+          12.54
+        ]
+      ],
+      "pre_tax_pct": 16.13,
+      "post_tax_pct": 13.9,
+      "tax_note": "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
+      "line": "Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: 16,13% до налога по графику выплат и 13,90% после налога 13%."
+    },
+    "worst": [
+      {
+        "id": "rates",
+        "title": "Рост ставок",
+        "text": "Купон пересматривается каждые 30 дней, поэтому цена почти не реагирует на ставки: при росте на 3 п.п. — менее 0,1%."
+      },
+      {
+        "id": "default",
+        "title": "Дефолт эмитента",
+        "text": "В худшем случае можно потерять вложенное — до 500 000 ₽."
+      },
+      {
+        "id": "float-down",
+        "title": "Снижение ставок",
+        "text": "Если ставки снизятся на 2,5 п.п. за год, доходность составит 14,93% вместо 16,13%."
+      }
+    ],
+    "flags": [
+      {
+        "id": 1,
+        "title": "Только для квалифицированных инвесторов",
+        "text": "Регулятор признал инструмент сложным для массового инвестора.",
+        "fired": false,
+        "points": 0,
+        "details": "ISQUALIFIEDINVESTORS = 0"
+      },
+      {
+        "id": 2,
+        "title": "Низкий уровень листинга",
+        "text": "Минимальные требования биржи к эмитенту по раскрытию информации.",
+        "fired": false,
+        "points": 0,
+        "details": "LISTLEVEL = 1"
+      },
+      {
+        "id": 3,
+        "title": "Высокая премия за риск",
+        "text": "Рынок оценивает кредитный риск эмитента как существенный.",
+        "fired": false,
+        "points": 0,
+        "details": "не считается для флоатеров"
+      },
+      {
+        "id": 4,
+        "title": "Неликвидный выпуск",
+        "text": "Мало оборота или сделок — выйти из позиции сложно.",
+        "fired": false,
+        "points": 0,
+        "details": "за 20 дн.: 3,0 млн ₽/день, 160 сделок/день"
+      },
+      {
+        "id": 5,
+        "title": "Широкий спред",
+        "text": "Большая разница между ценой покупки и продажи — потеря при каждой сделке.",
+        "fired": false,
+        "points": 0,
+        "details": "спред 0,01%"
+      },
+      {
+        "id": 6,
+        "title": "Не торгуется",
+        "text": "Биржевых торгов нет — выйти через биржу нельзя.",
+        "fired": false,
+        "points": 0,
+        "details": "торгуется"
+      },
+      {
+        "id": 7,
+        "title": "Длинная дюрация",
+        "text": "Цена сильно реагирует на изменение ставок.",
+        "fired": false,
+        "points": 0,
+        "details": "не считается для флоатеров"
+      },
+      {
+        "id": 8,
+        "title": "Эмитент может погасить досрочно (call)",
+        "text": "Эмитент может погасить выпуск в выгодный для себя момент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 9,
+        "title": "Ставка после оферты неизвестна",
+        "text": "После оферты ставку купона назначит эмитент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 10,
+        "title": "Валютный риск",
+        "text": "Номинал не в рублях — к риску облигации добавляется курсовой.",
+        "fired": false,
+        "points": 0,
+        "details": "FACEUNIT = SUR"
+      },
+      {
+        "id": 11,
+        "title": "Плавающий купон",
+        "text": "Доход зависит от рыночной ставки и снизится вместе с ней.",
+        "fired": true,
+        "points": 5,
+        "details": "BONDTYPE: плавающий"
+      },
+      {
+        "id": 12,
+        "title": "Обещанная доходность выше реальной",
+        "text": "Вам обещали больше, чем бумага даёт на самом деле.",
+        "fired": false,
+        "points": 0,
+        "details": "заявленная не указана"
+      },
+      {
+        "id": 13,
+        "title": "Дефолт в истории выпуска",
+        "text": "По выпуску уже был дефолт или технический дефолт.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      }
+    ],
+    "truth_score": {
+      "score": 95,
+      "grade": "Прозрачный продукт",
+      "top3": [
+        11
+      ],
+      "more_count": 0,
+      "none_fired": false
+    },
+    "macro": null,
+    "panels": [
+      "data_line",
+      "product",
+      "yield",
+      "price_line",
+      "liquidity",
+      "fees",
+      "worst",
+      "flags_score",
+      "plaque"
+    ],
+    "inputs": {
+      "position_size": 500000,
+      "k_pct": null,
+      "promised_pct": null,
+      "offer_price_pct": null
+    },
+    "diagnostics": {
+      "snapshot_dir": "golden/snapshots/cherk1p7",
+      "control_diff_pp": null,
+      "warnings": []
+    }
+  }
+}
