@@ -1,6 +1,6 @@
 # Jev в Second opinion
 
-Два decision-пункта на TypeSafe Jev (OpenRouter Decisions API, `POST /api/alpha/decisions`), код — `lib/jev.ts`:
+Два decision-пункта на TypeSafe Jev, код — `lib/jev.ts`. Доступ: прямой API TypeSafe (`POST https://api.typesafe.ai/v1/systemone`, ключ `TYPESAFE_API_KEY`, модель `jev-latest`) или OpenRouter Decisions API (`POST /api/alpha/decisions`, `OPENROUTER_API_KEY`, `typesafe/jev-1.13`) — формат запроса одинаковый, выбирается по ключу или `JEV_PROVIDER`.
 
 1. **Маршрутизация реплики** (`routeMessage`): Choice по 9 намерениям из `INTENTS` + Noul «названа ли бумага».
    При уверенности ≥ `JEV_THRESHOLD` (0,8) гейт (`lib/gate.ts`) вызывает инструмент напрямую — без LLM.

@@ -10,7 +10,7 @@ import { makeTools } from "@/lib/tools";
 import { SYSTEM_PROMPT } from "@/lib/prompt";
 import { getSession, MESSAGE_LIMIT } from "@/lib/session";
 import { runGate } from "@/lib/gate";
-import { jevEnabled } from "@/lib/jev";
+import { jevProvider } from "@/lib/jev";
 
 export const maxDuration = 60;
 
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
   });
   return createUIMessageStreamResponse({
     stream,
-    headers: { "x-so-mode": isMock() ? "mock" : provider(), "x-so-jev": jevEnabled() ? "on" : "rules" },
+    headers: { "x-so-mode": isMock() ? "mock" : provider(), "x-so-jev": jevProvider() ?? "rules" },
   });
 }
 

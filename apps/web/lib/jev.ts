@@ -46,33 +46,64 @@ export interface PromiseDecision {
 }
 
 const THRESHOLD = Number(process.env.JEV_THRESHOLD ?? 0.8);
-const JEV_MODEL = process.env.JEV_MODEL ?? "typesafe/jev-1.13";
-export const jevEnabled = () => process.env.JEV_ENABLED !== "0" && !!process.env.OPENROUTER_API_KEY && process.env.MOCK_LLM !== "1";
 export const jevThreshold = () => THRESHOLD;
 
-/* ───── клиент Decisions API (POST /api/alpha/decisions) ───── */
+/**
+ * Два бэкенда с одинаковым форматом запроса (state + questions) и почти одинаковым ответом:
+ *   typesafe   — прямой API TypeSafe: POST https://api.typesafe.ai/v1/systemone, ключ TYPESAFE_API_KEY (apikey_…), model jev-latest
+ *   openrouter — OpenRouter Decisions API: POST /api/alpha/decisions, ключ OPENROUTER_API_KEY, model typesafe/jev-1.13
+ * JEV_PROVIDER выбирает принудительно; иначе — тот, для которого есть ключ (TypeSafe в приоритете: это его модель).
+ */
+export type JevProvider = "typesafe" | "openrouter";
+export function jevProvider(): JevProvider | null {
+  if (process.env.JEV_ENABLED === "0" || process.env.MOCK_LLM === "1") return null;
+  const forced = process.env.JEV_PROVIDER as JevProvider | undefined;
+  if (forced === "typesafe" && process.env.TYPESAFE_API_KEY) return "typesafe";
+  if (forced === "openrouter" && process.env.OPENROUTER_API_KEY) return "openrouter";
+  if (process.env.TYPESAFE_API_KEY) return "typesafe";
+  if (process.env.OPENROUTER_API_KEY) return "openrouter";
+  return null;
+}
+export const jevEnabled = () => jevProvider() !== null;
+
+/* ───── клиент: один формат запроса, два адреса ───── */
 type Question =
   | { type: "choice"; instructions: string; criteria: Record<string, string> }
   | { type: "noul"; instructions: string; criteria?: { true: string; false: string } }
   | { type: "score"; instructions: string; criteria: string[] };
 type Answer =
   | { type: "choice"; choice: string; confidence: number; probabilities: Record<string, number> }
-  | { type: "noul"; noul: number }
+  | { type: "noul"; noul?: number; probability?: number } // TypeSafe документирует noul; на всякий случай читаем и probability
   | { type: "score"; score: number; confidence: number; probabilities: Record<string, number> };
 interface DecisionResponse { model: string; answers: Record<string, Answer>; usage?: { input_tokens?: number; output_tokens?: number; cost?: number } }
 
-const DECISIONS_URL = process.env.JEV_DECISIONS_URL ?? "https://openrouter.ai/api/alpha/decisions";
+const ENDPOINTS: Record<JevProvider, { url: string; key: () => string | undefined; model: string }> = {
+  typesafe: {
+    url: process.env.TYPESAFE_URL ?? "https://api.typesafe.ai/v1/systemone",
+    key: () => process.env.TYPESAFE_API_KEY,
+    model: process.env.JEV_MODEL ?? "jev-latest",
+  },
+  openrouter: {
+    url: process.env.JEV_DECISIONS_URL ?? "https://openrouter.ai/api/alpha/decisions",
+    key: () => process.env.OPENROUTER_API_KEY,
+    model: process.env.JEV_MODEL_OPENROUTER ?? "typesafe/jev-1.13",
+  },
+};
 
 export async function jevDecide(state: Record<string, unknown>, questions: Record<string, Question>, signal?: AbortSignal): Promise<DecisionResponse> {
-  const res = await fetch(DECISIONS_URL, {
+  const p = jevProvider();
+  if (!p) throw new Error("Jev отключён");
+  const ep = ENDPOINTS[p];
+  const res = await fetch(ep.url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: JEV_MODEL, state, questions }),
+    headers: { Authorization: `Bearer ${ep.key()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: ep.model, state, questions }),
     signal: signal ?? AbortSignal.timeout(Number(process.env.JEV_TIMEOUT_MS ?? 2500)),
   });
-  if (!res.ok) throw new Error(`Jev HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`Jev ${p} HTTP ${res.status}`);
   return (await res.json()) as DecisionResponse;
 }
+const noulOf = (a: Answer | undefined) => (a?.type === "noul" ? a.noul ?? a.probability ?? 0 : 0);
 
 /* ───── числа в тексте ───── */
 export const ISIN_RE = /\b(RU|SU)[0-9A-Z]{10}\b/i;
@@ -179,7 +210,7 @@ export async function routeMessage(text: string, hasReport: boolean, lastAssista
     if (a.type !== "choice" || !(a.choice in INTENTS)) return routeByRules(text, hasReport);
     return {
       intent: a.choice as Intent, confidence: a.confidence, probabilities: a.probabilities as Partial<Record<Intent, number>>,
-      mentionsSecurity: m?.type === "noul" ? m.noul : 0, source: "jev",
+      mentionsSecurity: noulOf(m), source: "jev",
       usage: { inputTokens: res.usage?.input_tokens, cost: res.usage?.cost },
     };
   } catch {

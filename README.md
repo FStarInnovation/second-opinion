@@ -61,14 +61,14 @@ npm run check           # всё сразу
 cp apps/web/.env.example apps/web/.env   # вписать OPENROUTER_API_KEY; без ключа — MOCK-режим
 npm run web:dev                          # http://localhost:3000 — форма, /check, /chat
 npm run e2e:chat                         # сценарии чата на запущенном сервере (SO_OFFLINE=1 MOCK_LLM=1)
-npx tsx apps/web/scripts/jev-eval.ts --jev   # маршрутизатор на 50 размеченных фразах, живой Jev
+cd apps/web && npx tsx --env-file=.env scripts/jev-eval.ts --jev   # маршрутизатор на 50 фразах, живой Jev
 
 cd packages/engine
 npx tsx src/cli.ts "РОЛЬФ 1Р07" --promised 26          # живой ISS
 npx tsx src/cli.ts "RU000A1038V6" --out report.json     # контракт в файл
 ```
 
-Движку и страницам ключей не требуется (ISS открытый). Ассистенту нужен ключ в `apps/web/.env` — только там, никогда в чате и файлах репозитория: `OPENROUTER_API_KEY` (Haiku 5.5 + fallback GPT-6 Luna + Jev) или `ANTHROPIC_API_KEY` (Claude API напрямую, Haiku 5.5 без fallback, Jev → правила). Ключ, попавший в чат или коммит, считается скомпрометированным — его сразу отзывают и выпускают новый.
+Движку и страницам ключей не требуется (ISS открытый). Ассистенту нужен ключ в `apps/web/.env` — только там, никогда в чате и файлах репозитория: `OPENROUTER_API_KEY` (Haiku 5.5 + fallback GPT-6 Luna, и Jev через Decisions API) или `ANTHROPIC_API_KEY` (Claude API напрямую, Haiku 5.5 без fallback); Jev отдельно — `TYPESAFE_API_KEY` (прямой API TypeSafe, приоритетный) либо тот же OpenRouter-ключ; без ключа Jev — маршрутизация по правилам. Ключ, попавший в чат или коммит, считается скомпрометированным — его сразу отзывают и выпускают новый.
 
 ## Инварианты (нарушать нельзя)
 
