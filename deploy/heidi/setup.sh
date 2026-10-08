@@ -19,7 +19,12 @@ fi
 APP_HOME=$(eval echo "~$APP_USER")
 APP_DIR="${APP_DIR:-/opt/second-opinion}"  # рабочее дерево
 REPO_DIR="${REPO_DIR:-$APP_HOME/git/second-opinion.git}"  # bare-репозиторий, в него пушим с Mac
-DOMAIN="${DOMAIN:-mkt-second-opinion.ru}"
+# Имена сайта. Пока DNS mkt-second-opinion.ru не указывает сюда — временная ссылка через sslip.io
+# (публичный DNS: 40-160-87-140.sslip.io → 40.160.87.140; Let's Encrypt выдаёт на него обычный сертификат).
+# Когда домен переедет: DOMAINS="mkt-second-opinion.ru www.mkt-second-opinion.ru $SSLIP_HOST" bash setup.sh
+PUBLIC_IP="${PUBLIC_IP:-$(curl -4 -fsS --max-time 10 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')}"
+SSLIP_HOST="${PUBLIC_IP//./-}.sslip.io"
+DOMAINS="${DOMAINS:-$SSLIP_HOST}"
 
 say() { printf '\n\033[1;34m== %s\033[0m\n' "$*"; }
 
@@ -69,14 +74,19 @@ UNIT
 fi
 caddy version
 
-say "Caddyfile → $DOMAIN"
+say "Caddyfile → $DOMAINS (+ http://$PUBLIC_IP)"
 sudo tee /etc/caddy/Caddyfile >/dev/null <<CADDY
-$DOMAIN, www.$DOMAIN {
+# Сгенерировано deploy/heidi/setup.sh. HTTPS-имена (сертификаты Caddy получает сам):
+$DOMAINS {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:3000
 	log {
 		output file /var/log/caddy/access.log
 	}
+}
+# Запасной вход по IP без сертификата
+http://$PUBLIC_IP {
+	reverse_proxy 127.0.0.1:3000
 }
 CADDY
 sudo mkdir -p /var/log/caddy && sudo chown caddy:caddy /var/log/caddy
@@ -139,5 +149,7 @@ cat <<EOF
      ssh heidi nano $APP_DIR/apps/web/.env
 3. Собрать и запустить:
      ssh heidi 'bash -s' < deploy/heidi/deploy.sh
-4. DNS: A-запись $DOMAIN (и www) → $(curl -4 -fsS ifconfig.me 2>/dev/null || echo 'IP сервера'). Caddy получит сертификат сам.
+4. Ссылка для коллег (после шага 3): https://$SSLIP_HOST  (запасная: http://$PUBLIC_IP)
+5. Когда DNS mkt-second-opinion.ru укажет на $PUBLIC_IP — на сервере:
+     DOMAINS="mkt-second-opinion.ru www.mkt-second-opinion.ru $SSLIP_HOST" bash setup.sh
 EOF

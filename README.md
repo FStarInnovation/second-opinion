@@ -71,7 +71,7 @@ npx tsx src/cli.ts "RU000A1038V6" --out report.json     # контракт в ф
 
 Движку и страницам ключей не требуется (ISS открытый). Ассистенту нужен ключ в `apps/web/.env` — только там, никогда в чате и файлах репозитория: `OPENROUTER_API_KEY` (Haiku 5.5 + fallback GPT-6 Luna, и Jev через Decisions API) или `ANTHROPIC_API_KEY` (Claude API напрямую, Haiku 5.5 без fallback); Jev отдельно — `TYPESAFE_API_KEY` (прямой API TypeSafe, приоритетный) либо тот же OpenRouter-ключ; без ключа Jev — маршрутизация по правилам. Ключ, попавший в чат или коммит, считается скомпрометированным — его сразу отзывают и выпускают новый.
 
-## Тестовый стенд (heidi → mkt-second-opinion.ru)
+## Тестовый стенд (heidi → https://40-160-87-140.sslip.io, позже mkt-second-opinion.ru)
 
 Caddy (HTTPS сам) → `next start` под systemd, код — `git push heidi <ветка>:main` в bare-репозиторий на сервере.
 Разовая настройка `deploy/heidi/setup.sh`, каждое обновление — `deploy/heidi/release.sh`. Стенд открытый: дневной лимит

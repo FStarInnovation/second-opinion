@@ -1,7 +1,8 @@
-# Тестовый стенд на heidi — mkt-second-opinion.ru
+# Тестовый стенд на heidi — https://40-160-87-140.sslip.io (позже mkt-second-opinion.ru)
 
 Сервер: AlmaLinux 10, 4 vCPU / 7,6 GiB, пользователь `ez`, алиас `ssh heidi`. Схема: Caddy (HTTPS, сертификат Let's Encrypt
-сам) → `next start` на 127.0.0.1:3000 под systemd. Код попадает на сервер `git push` в bare-репозиторий `~/git/second-opinion.git`,
+сам) → `next start` на 127.0.0.1:3000 под systemd. Пока домен на чужом DNS, стенд живёт на имени через sslip.io
+(публичный DNS, `40-160-87-140.sslip.io` → `40.160.87.140`, сертификат настоящий) и по запасному `http://40.160.87.140`. Код попадает на сервер `git push` в bare-репозиторий `~/git/second-opinion.git`,
 без GitHub-ключей на сервере.
 
 ## Первый запуск (один раз)
@@ -24,8 +25,9 @@ sudo спрашивает пароль; через `bash -s` пароль вве
 `.env` на сервере — тот же набор, что на Mac (ANTHROPIC_API_KEY, LLM_PROVIDER=anthropic, TYPESAFE_API_KEY, MOCK_LLM=0),
 плюс `SO_DAILY_BUDGET_USD=2`. Ключи вводятся руками в nano, в чат и в репозиторий не попадают.
 
-DNS: A-запись `mkt-second-opinion.ru` и `www` → IP сервера. Пока записи нет, Caddy не выдаст сертификат и сайт по домену
-не откроется (по `http://IP:80` тоже — Caddy ждёт имя хоста); проверить сервис можно с сервера: `curl localhost:3000/api/health`.
+Переезд на домен: когда A-записи `mkt-second-opinion.ru` и `www` укажут на IP сервера, на сервере один раз
+`DOMAINS="mkt-second-opinion.ru www.mkt-second-opinion.ru 40-160-87-140.sslip.io" bash setup.sh` — Caddyfile перепишется,
+сертификат появится за минуту, старая ссылка продолжит работать.
 
 ## Каждое обновление
 
@@ -48,4 +50,4 @@ deploy/heidi/release.sh
 - Логи приложения: `ssh heidi journalctl -u second-opinion -f`
 - Логи Caddy: `ssh heidi sudo tail -f /var/log/caddy/access.log`
 - Расход: `ssh heidi 'cd /opt/second-opinion/apps/web && node ../../node_modules/.bin/tsx scripts/usage-report.ts'`
-- Статус: `curl -s https://mkt-second-opinion.ru/api/health`
+- Статус: `curl -s https://40-160-87-140.sslip.io/api/health`
