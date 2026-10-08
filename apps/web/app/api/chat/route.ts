@@ -5,7 +5,7 @@
 import {
   convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, stepCountIs, streamText, type UIMessage,
 } from "ai";
-import { chatModel, isMock, PRIMARY_MODEL } from "@/lib/model";
+import { chatModel, isMock, provider, modelLabel, callProviderOptions } from "@/lib/model";
 import { makeTools } from "@/lib/tools";
 import { SYSTEM_PROMPT } from "@/lib/prompt";
 import { getSession, MESSAGE_LIMIT } from "@/lib/session";
@@ -54,6 +54,7 @@ export async function POST(req: Request) {
         messages: await convertToModelMessages(messages, { tools }),
         tools,
         stopWhen: stepCountIs(4),
+        providerOptions: callProviderOptions(),
         onStepFinish: ({ usage, response, toolCalls, providerMetadata }) => {
           const or = (providerMetadata as { openrouter?: { usage?: { cost?: number; promptTokensDetails?: { cachedTokens?: number } } } } | undefined)?.openrouter;
           session.usage.calls += 1;
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
           session.usage.output += usage.outputTokens ?? 0;
           session.usage.cost += or?.usage?.cost ?? 0;
           log({
-            chat: session.id, step: "llm", model: response.modelId ?? PRIMARY_MODEL,
+            chat: session.id, step: "llm", provider: provider(), model: response.modelId ?? modelLabel(),
             in: usage.inputTokens, cached: usage.inputTokenDetails?.cacheReadTokens ?? or?.usage?.promptTokensDetails?.cachedTokens, out: usage.outputTokens,
             cost: or?.usage?.cost, tools: toolCalls.map((t) => t.toolName),
           });
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
   });
   return createUIMessageStreamResponse({
     stream,
-    headers: { "x-so-mode": isMock() ? "mock" : "live", "x-so-jev": jevEnabled() ? "on" : "rules" },
+    headers: { "x-so-mode": isMock() ? "mock" : provider(), "x-so-jev": jevEnabled() ? "on" : "rules" },
   });
 }
 

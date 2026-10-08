@@ -6,22 +6,57 @@
  */
 import type { LanguageModel } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { MockLanguageModelV4 } from "ai/test";
 import type { LanguageModelV4StreamPart, LanguageModelV4Prompt } from "@ai-sdk/provider";
 
+/**
+ * Провайдер выбирается по ключам в .env:
+ *   OPENROUTER_API_KEY — OpenRouter: Haiku 5.5 + fallback GPT-6 Luna в одном запросе (и Jev на том же ключе);
+ *   ANTHROPIC_API_KEY  — Claude API напрямую: Haiku 5.5 без fallback-модели (Jev тогда недоступен → правила);
+ *   LLM_PROVIDER=openrouter|anthropic — принудительно, если заданы оба ключа. Ни одного ключа — MOCK.
+ */
 export const PRIMARY_MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-haiku-5.5";
 export const FALLBACK_MODEL = process.env.OPENROUTER_FALLBACK_MODEL ?? "openai/gpt-6-luna";
-export const isMock = () => process.env.MOCK_LLM === "1" || !process.env.OPENROUTER_API_KEY;
+export const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-haiku-5-5";
+
+export type Provider = "openrouter" | "anthropic" | "mock";
+export function provider(): Provider {
+  if (process.env.MOCK_LLM === "1") return "mock";
+  const forced = process.env.LLM_PROVIDER as Provider | undefined;
+  if (forced === "openrouter" && process.env.OPENROUTER_API_KEY) return "openrouter";
+  if (forced === "anthropic" && process.env.ANTHROPIC_API_KEY) return "anthropic";
+  if (process.env.OPENROUTER_API_KEY) return "openrouter";
+  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  return "mock";
+}
+export const isMock = () => provider() === "mock";
+export const modelLabel = () =>
+  provider() === "openrouter" ? `${PRIMARY_MODEL} → ${FALLBACK_MODEL}` : provider() === "anthropic" ? ANTHROPIC_MODEL + " (Claude API)" : "mock";
 
 export function chatModel(): LanguageModel {
-  if (isMock()) return mockModel();
-  const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
-  return openrouter.chat(PRIMARY_MODEL, {
-    models: [PRIMARY_MODEL, FALLBACK_MODEL],
-    usage: { include: true },
-    reasoning: { effort: "low", exclude: true },
-    temperature: 0.3,
-  });
+  switch (provider()) {
+    case "anthropic": {
+      const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      return anthropic(ANTHROPIC_MODEL);
+    }
+    case "openrouter": {
+      const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+      return openrouter.chat(PRIMARY_MODEL, {
+        models: [PRIMARY_MODEL, FALLBACK_MODEL],
+        usage: { include: true },
+        reasoning: { effort: "low", exclude: true },
+        temperature: 0.3,
+      });
+    }
+    default:
+      return mockModel();
+  }
+}
+
+/** Опции вызова для прямого Claude API: усилие low — вся математика в движке, модели рассуждать не о чем. */
+export function callProviderOptions() {
+  return provider() === "anthropic" ? { anthropic: { effort: "low" as const } } : undefined;
 }
 
 /* ───── скриптовая модель для сценариев без ключа ───── */
