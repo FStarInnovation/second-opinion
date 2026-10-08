@@ -16,7 +16,9 @@ ssh heidi nano /opt/second-opinion/apps/web/.env
 ssh heidi 'bash -s' < deploy/heidi/deploy.sh
 ```
 
-`setup.sh` запускается с терминалом (`ssh -t`), потому что sudo спрашивает пароль; через `bash -s` пароль ввести некуда.
+`setup.sh` требует root один раз (пакеты, порты 80/443, firewall, systemd). Запускается с терминалом (`ssh -t`), потому что
+sudo спрашивает пароль; через `bash -s` пароль ввести некуда. Если у `ez` нет sudo — тот, у кого есть root, выполняет на
+сервере `APP_USER=ez bash setup.sh` (скрипт сам понимает, что он root). После этого root не нужен.
 `deploy.sh` после этого работает через `bash -s`: перезапуск сервиса разрешён без пароля (sudoers).
 
 `.env` на сервере — тот же набор, что на Mac (ANTHROPIC_API_KEY, LLM_PROVIDER=anthropic, TYPESAFE_API_KEY, MOCK_LLM=0),

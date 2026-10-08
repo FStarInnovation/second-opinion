@@ -5,9 +5,20 @@
 # Повторный запуск безопасен.
 set -euo pipefail
 
-APP_USER="${APP_USER:-$USER}"              # под кем работает сервис (ez)
+# Можно запускать как ez с sudo — или напрямую под root (тогда sudo не нужен): APP_USER=ez bash setup.sh
+if [ "$(id -u)" = 0 ]; then
+  sudo() { if [ "${1:-}" = "-u" ]; then local u=$2; shift 2; runuser -u "$u" -- "$@"; else "$@"; fi; }
+  APP_USER="${APP_USER:-ez}"
+else
+  APP_USER="${APP_USER:-$USER}"              # под кем работает сервис (ez)
+  if ! sudo -n true 2>/dev/null; then
+    echo "Нужны права root: у $USER нет sudo без пароля. Варианты: (а) ввести пароль sudo, когда спросит;"
+    echo "(б) тот, у кого есть root, запускает:  APP_USER=$USER bash setup.sh"; echo
+  fi
+fi
+APP_HOME=$(eval echo "~$APP_USER")
 APP_DIR="${APP_DIR:-/opt/second-opinion}"  # рабочее дерево
-REPO_DIR="${REPO_DIR:-$HOME/git/second-opinion.git}"  # bare-репозиторий, в него пушим с Mac
+REPO_DIR="${REPO_DIR:-$APP_HOME/git/second-opinion.git}"  # bare-репозиторий, в него пушим с Mac
 DOMAIN="${DOMAIN:-mkt-second-opinion.ru}"
 
 say() { printf '\n\033[1;34m== %s\033[0m\n' "$*"; }
@@ -83,11 +94,10 @@ if systemctl is-active --quiet firewalld; then
   echo "80/443 открыты"
 fi
 
-say "Bare-репозиторий $REPO_DIR и рабочее дерево $APP_DIR"
-mkdir -p "$(dirname "$REPO_DIR")"
-[ -d "$REPO_DIR" ] || git init --bare -q "$REPO_DIR"
-sudo mkdir -p "$APP_DIR" && sudo chown "$APP_USER:$APP_USER" "$APP_DIR"
-mkdir -p "$APP_DIR/apps/web/.usage"
+say "Bare-репозиторий $REPO_DIR и рабочее дерево $APP_DIR (владелец $APP_USER)"
+sudo -u "$APP_USER" mkdir -p "$(dirname "$REPO_DIR")"
+[ -d "$REPO_DIR" ] || sudo -u "$APP_USER" git init --bare -q "$REPO_DIR"
+sudo mkdir -p "$APP_DIR/apps/web/.usage" && sudo chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 
 say "systemd-сервис second-opinion (next start на :3000)"
 sudo tee /etc/systemd/system/second-opinion.service >/dev/null <<UNIT
@@ -123,7 +133,7 @@ sudo usermod -aG systemd-journal "$APP_USER" || true
 say "Готово. Дальше:"
 cat <<EOF
 1. На Mac добавить remote и запушить код:
-     git remote add heidi $APP_USER@heidi:$REPO_DIR
+     git remote add heidi $APP_USER@heidi:${REPO_DIR#"$APP_HOME/"}
      git push heidi e2-blocks-page:main
 2. Создать $APP_DIR/apps/web/.env на сервере (ключи вводите сами):
      ssh heidi nano $APP_DIR/apps/web/.env
