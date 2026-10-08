@@ -36,7 +36,7 @@ const AssistantMessage: FC = () => (
   </MessagePrimitive.Root>
 );
 
-export const Thread: FC = () => (
+export const Thread: FC<{ status?: string; mock?: boolean }> = ({ status, mock }) => (
   <ThreadPrimitive.Root className="so-thread">
     <ThreadPrimitive.Viewport className="so-thread__viewport" autoScroll>
       <ThreadPrimitive.Empty>
@@ -74,6 +74,7 @@ export const Thread: FC = () => (
           </ThreadPrimitive.If>
         </ComposerPrimitive.Root>
         <p className="cap so-thread__disclaimer">Не является индивидуальной инвестиционной рекомендацией. Данные Мосбиржи с задержкой до 15 минут.</p>
+        {status && <p className={"cap so-thread__status" + (mock ? " so-thread__status--mock" : "")} data-status={mock ? "mock" : "live"}>{status}</p>}
       </ThreadPrimitive.ViewportFooter>
     </ThreadPrimitive.Viewport>
   </ThreadPrimitive.Root>

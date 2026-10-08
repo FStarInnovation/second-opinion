@@ -5,7 +5,7 @@ import { useChatRuntime, AssistantChatTransport } from "@assistant-ui/react-ai-s
 import { SiteHeader } from "@so/blocks";
 import { Thread } from "./Thread";
 
-export function ChatApp() {
+export function ChatApp({ status, mock }: { status?: string; mock?: boolean }) {
   // id сессии — для серверного состояния (последний отчёт) и лимита сообщений
   const chatId = useMemo(() => "c_" + Math.random().toString(36).slice(2, 12), []);
   const runtime = useChatRuntime({
@@ -15,7 +15,7 @@ export function ChatApp() {
     <AssistantRuntimeProvider runtime={runtime}>
       <div className="so so-chat-page">
         <SiteHeader homeHref="/" />
-        <Thread />
+        <Thread status={status} mock={mock} />
       </div>
     </AssistantRuntimeProvider>
   );

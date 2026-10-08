@@ -35,3 +35,6 @@
   .so-composer__input { flex-basis: 100%; }
   .so-composer__send { margin-left: auto; }
 }
+
+.so-thread__status { margin: 4px 0 0; text-align: center; opacity: .7; }
+.so-thread__status--mock { color: var(--so-mid); opacity: 1; font-weight: 600; }
