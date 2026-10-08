@@ -6,7 +6,8 @@
   "description": "Э2: статические страницы отчёта (SSG) из golden-контрактов + витрина блоков",
   "scripts": {
     "build": "tsx src/build-pages.tsx",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "artifact": "tsx src/artifact-index.tsx"
   },
   "dependencies": {
     "@so/blocks": "0.1.0",

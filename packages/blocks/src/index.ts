@@ -12,7 +12,7 @@ export * from "./blocks.js";
 export * from "./ReportView.js";
 export * from "./branches.js";
 export * from "./app.js";
-export { Bars, scoreTone, liquidityTone } from "./ui.js";
+export { Bars, BrandMark, scoreTone, liquidityTone } from "./ui.js";
 
 /** Реестр: id панели → компонент. Plaque не зависит от контракта (статичный текст П23). */
 export const BLOCKS: Record<PanelIdT, ComponentType<{ r: BondReportT }>> = {
