@@ -13,7 +13,7 @@ const since = arg("--since") ? Date.parse(arg("--since")!) : 0;
 if (!fs.existsSync(file)) { console.error(`Журнала нет: ${file}. Он появляется после первых реплик в чате.`); process.exit(2); }
 
 type Rec = { t: string; chat?: string; step: string; text?: string; intent?: string; confidence?: number; source?: string; handled?: boolean;
-  provider?: string; model?: string; in?: number; cached?: number; out?: number; cost?: number; cost_source?: string; tools?: string[]; jev_in?: number; jev_cost?: number; error?: string };
+  provider?: string; model?: string; in?: number; cached?: number; cache_write?: number; out?: number; cost?: number; cost_source?: string; tools?: string[]; jev_in?: number; jev_cost?: number; error?: string };
 const rows = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as Rec).filter((r) => Date.parse(r.t) >= since);
 
 const gates = rows.filter((r) => r.step === "gate");
@@ -25,7 +25,8 @@ const sessions = new Set(gates.map((r) => r.chat)).size;
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 const llmIn = sum(llm.map((r) => r.in ?? 0)), llmCached = sum(llm.map((r) => r.cached ?? 0)), llmOut = sum(llm.map((r) => r.out ?? 0));
-const llmCost = sum(llm.map((r) => r.cost ?? estimateCost(r.model, r.in ?? 0, r.out ?? 0, r.cached ?? 0) ?? 0));
+const llmCacheWrite = sum(llm.map((r) => r.cache_write ?? 0));
+const llmCost = sum(llm.map((r) => r.cost ?? estimateCost(r.model, r.in ?? 0, r.out ?? 0, r.cached ?? 0, r.cache_write ?? 0) ?? 0));
 const jevIn = sum(byJev.map((r) => r.jev_in ?? 0));
 const jevCost = sum(byJev.map((r) => r.jev_cost ?? estimateCost("jev", r.jev_in ?? 0) ?? 0));
 const total = llmCost + jevCost;
@@ -45,7 +46,7 @@ for (const r of gates) intents.set(`${r.intent ?? "?"}${r.handled ? " (без LL
 console.log(`Журнал: ${file}\nПериод: ${rows[0]?.t.slice(0, 16)} … ${rows.at(-1)?.t.slice(0, 16)}\n`);
 console.log(`Реплик пользователя: ${msgs} в ${sessions} сессиях; решено без LLM: ${handled.length} (${msgs ? Math.round((handled.length / msgs) * 100) : 0}%); маршрутизировал Jev: ${byJev.length}, правила: ${gates.length - byJev.length}`);
 console.log(`Вызовов модели: ${llm.length} (${msgs ? (llm.length / Math.max(1, msgs - handled.length)).toFixed(2) : 0} на реплику с LLM); ошибок: ${errors.length}`);
-console.log(`\nТокены LLM: вход ${llmIn.toLocaleString("ru-RU")} (из кэша ${llmCached.toLocaleString("ru-RU")}), выход ${llmOut.toLocaleString("ru-RU")}`);
+console.log(`\nТокены LLM: вход ${llmIn.toLocaleString("ru-RU")} (из кэша ${llmCached.toLocaleString("ru-RU")}, записано в кэш ${llmCacheWrite.toLocaleString("ru-RU")}), выход ${llmOut.toLocaleString("ru-RU")}`);
 for (const [k, m] of byModel) console.log(`  ${k}: ${m.calls} вызовов, вход ${m.in.toLocaleString("ru-RU")}, выход ${m.out.toLocaleString("ru-RU")}, ${fmt$(m.cost)}`);
 console.log(`Токены Jev: вход ${jevIn.toLocaleString("ru-RU")} за ${byJev.length} решений`);
 console.log(`\nСтоимость: LLM ${fmt$(llmCost)} + Jev ${fmt$(jevCost)} = ${fmt$(total)}  (${llm.some((r) => r.cost_source === "price-list") ? "LLM по прайс-листу, провайдер cost не отдаёт" : "cost от провайдера"})`);

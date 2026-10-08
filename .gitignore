@@ -10,3 +10,4 @@ apps/web/.e2e-shots/
 apps/web/next-env.d.ts
 *.tsbuildinfo
 apps/web/.usage/
+.DS_Store

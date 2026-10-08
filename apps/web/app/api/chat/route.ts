@@ -69,15 +69,17 @@ export async function POST(req: Request) {
           const or = (providerMetadata as { openrouter?: { usage?: { cost?: number; promptTokensDetails?: { cachedTokens?: number } } } } | undefined)?.openrouter;
           const model = response.modelId ?? modelLabel();
           const cached = usage.inputTokenDetails?.cacheReadTokens ?? or?.usage?.promptTokensDetails?.cachedTokens ?? 0;
-          // OpenRouter отдаёт cost сам; Claude API — считаем по прайсу
-          const cost = or?.usage?.cost ?? estimateCost(model, usage.inputTokens ?? 0, usage.outputTokens ?? 0, cached) ?? 0;
+          // cache_write > 0 — breakpoint сработал и префикс записан в кэш (читается следующими вызовами 5 минут)
+          const cacheWrite = usage.inputTokenDetails?.cacheWriteTokens ?? 0;
+          // OpenRouter отдаёт cost сам; Claude API — считаем по прайсу (запись в кэш ×1,25)
+          const cost = or?.usage?.cost ?? estimateCost(model, usage.inputTokens ?? 0, usage.outputTokens ?? 0, cached, cacheWrite) ?? 0;
           session.usage.calls += 1;
           session.usage.input += usage.inputTokens ?? 0;
           session.usage.output += usage.outputTokens ?? 0;
           session.usage.cost += cost;
           log({
             chat: session.id, step: "llm", provider: provider(), model,
-            in: usage.inputTokens, cached, out: usage.outputTokens, cost: Math.round(cost * 1e6) / 1e6,
+            in: usage.inputTokens, cached, cache_write: cacheWrite, out: usage.outputTokens, cost: Math.round(cost * 1e6) / 1e6,
             cost_source: or?.usage?.cost != null ? "provider" : "price-list",
             tools: toolCalls.map((t) => t.toolName),
           });

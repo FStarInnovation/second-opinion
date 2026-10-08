@@ -24,10 +24,12 @@ export function priceFor(model: string | undefined) {
   return null;
 }
 
-export function estimateCost(model: string | undefined, input = 0, output = 0, cached = 0): number | null {
+/** input — все входные токены (включая прочитанные из кэша и записанные в него); запись в кэш у Anthropic стоит ×1,25 */
+export function estimateCost(model: string | undefined, input = 0, output = 0, cached = 0, cacheWrite = 0): number | null {
   const p = priceFor(model);
   if (!p) return null;
-  return ((input - cached) * p.input + cached * p.cacheRead + output * p.output) / 1e6;
+  const plain = Math.max(0, input - cached - cacheWrite);
+  return (plain * p.input + cached * p.cacheRead + cacheWrite * p.input * 1.25 + output * p.output) / 1e6;
 }
 
 const DIR = process.env.SO_USAGE_DIR ?? path.join(process.cwd(), ".usage");
