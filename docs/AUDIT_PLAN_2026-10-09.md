@@ -31,6 +31,7 @@
 **Приёмка.** B.1 `control_diff_pp ≤ 0,05` на всех golden со `status ok`; B.2 `k_grid[0].pre == main_pct` (±0,05) при `used_as_main`; B.3 валютный НКД `cherk2p1` = ISS-конвенция (7,104, не 6,808); B.4 `todayIso` = календарный день МСК; B.5 купон в дату погашения не выпадает из потоков при любом `todayIso`.
 **Эталоны.** Изменятся `own_control_pct`, `k_grid`, `fees_tax`, `worst` у всех 13 report-кейсов и `price.acc` у `cherk2p1` — ожидаемо; `control_diff_pp` должен стать ≈ 0.
 **Риск.** Для бумаг без `SETTLEDATE` (нет торгов) — фоллбэк на следующий торговый день от `todayIso`.
+**Выполнено 10.10.2026** (исполнитель + 2 независимых ревью, оба `accept`; own ≡ `EFFECTIVEYIELDWAPRICE` до 4-го знака на rolf/pkb-amort/ofz26238/veb и фикстурах). Ратифицированные отклонения от буквы спецификации: (а) номинал `face = FACEVALUEONSETTLEDATE ?? FACEVALUE` — пара к фильтру `amortFuture > settleIso` (амортизация в (today, settle] уходит продавцу), тот же номинал в фоллбэке `cp`; (б) будущие оферты из `bondization.offers` — тоже `> settleIso` (PUT/CALLOPTIONDATE из №1 намеренно не фильтруются: к ним биржа считает main, вырожденная оферта — WP-F); (в) валютный НКД при `NEXTCOUPON ≤ settleIso` = 0 (конвенция ISS, иначе двойной учёт купона); (г) `nextBusinessDay` без праздников биржи — только фоллбэк при отсутствии `SETTLEDATE`; (д) `settleIso` добавлен в `noTrade` selftest и в `lib.facts()` харнеса. Эталоны: пересобраны 8 (ofz26238, rolf, veb, cherk1p7, cherk2p2, cherk2p1, ofz26243-name, pkb-amort) — изменились только `own_control_pct`/`control_diff_pp`(→0)/`k_grid`/`fees_tax`; `main_pct` — только у флоатеров (main = own: cherk1p7 16,13→16,19; cherk2p2 17,12→17,19) и CNY cherk2p1 (`price.acc` 6,808→7,104, main 9,27→9,25); flags/score/liquidity/plain_text без изменений.
 
 ### WP-C — пара «цена ↔ доходность» и ноль
 **Изменение.** `facts.ts:236-240`: цепочка `EFFECTIVEYIELDWAPRICE↔my.WAPRICE → marketdata.YIELDATWAPRICE↔marketdata.WAPRICE → YIELDATPREVWAPRICE↔PREVWAPRICE`; `toNum(x) === 0 → null` для обоих полей доходности (отрицательные — реальны, не трогать). В `yieldModel`: `useMoex` только если `moexYPrice === cleanPct` (одна пара), иначе `main = own`. Юнит-тест на пустой `marketdata_yields` при заполненном `WAPRICE`.
@@ -74,7 +75,7 @@
 | Шаг | Что | Ожидаемый эффект в харнесе |
 |---|---|---|
 | 0 | Харнес RED, `baseline.json` записан | все проверки RED (кроме guard) |
-| 1 | WP-B | B.1–B.5 GREEN; control_diff на golden → ≈0 |
+| 1 | WP-B ✅ 10.10.2026 | B.1–B.5 GREEN; control_diff на golden → 0 (факт) |
 | 2 | WP-C | C.1–C.3 GREEN |
 | 3 | WP-F | F.1–F.3 GREEN |
 | 4 | WP-D (включить гейт) | D.1–D.3 GREEN; на AST0 fees/worst.call скрыты |
@@ -101,6 +102,8 @@
 |---|---|---|---|---|---|
 | движок `packages/engine/src/audit` | 38 | 31 | 4 (C.3, D.4, T.3, T.4) | 3 (R.2–R.4; прогнаны один раз с `AUDIT_LIVE=1` — RED) | 0 |
 | веб `apps/web/audit` | 24 | 19 | 5 (H.8, S.3, R.6-web-guard, R.7-web-guard, R.8-guard) | 0 | 0 |
+
+**Обновление 10.10.2026 (после WP-B):** движок GREEN 9 (B.1–B.5 → GREEN) · RED 26 · SKIP 3 · ERROR 0; веб без изменений; `selftest` OK; baseline перезаписан.
 
 `npm run audit` → exit 1 (есть RED — норма до правок); `npm run audit:engine -- --baseline` / `npm run audit:web -- --baseline` → exit 0 (не хуже базового). `tsc --noEmit` в обоих пакетах чист. Наполнение: 3 раунда «строитель → независимый проверяющий → ремонт» (46 + 16 агентов), все замечания закрыты или отклонены с обоснованием; оставшиеся границы — в разделе «Известные ограничения харнеса».
 

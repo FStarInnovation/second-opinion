@@ -1,11 +1,13 @@
 /**
- * Метрики базового отчёта — порт проверенной логики прототипа v2 (harness/comp.js),
- * сверенной с живым ISS 08.10.2026 (расхождение с EFFECTIVEYIELDWAPRICE ≤ 0,03 п.п.).
+ * Метрики базового отчёта — порт проверенной логики прототипа v2 (harness/comp.js).
+ * Время потоков и горизонтов — от даты расчётов (BondFacts.settleIso = SETTLEDATE №1), как у биржи:
+ * свой расчёт от даты расчётов совпадает с EFFECTIVEYIELDWAPRICE (от todayIso расходился на 0,1–0,7 п.п.
+ * у коротких бумаг, аудит 09.10.2026); «через N дней» для пользователя — по-прежнему от todayIso.
  * Формулы и тексты — из сводной постановки, разделы «Метрики базового отчёта»
  * и «Red flags и Product Truth Score». Веса и пороги — в CONFIG.
  */
 import type { BondFacts } from "./iss/facts";
-import { dmy } from "./iss/facts";
+import { daysBetween, dmy, yearsFrom } from "./iss/facts";
 
 import { CONFIG, gradeOf } from "./config";
 import { curWord, daysWord, fmt, fmtMax, mln, pctS, round4, rub, termPhrase } from "./format";
@@ -42,9 +44,13 @@ export function shift(s: 1 | 2 | 3, t: number): number {
 export interface Horizon { t: number; red: number; label: string; dateIso: string | null; kind: "maturity" | "offer" | "call" }
 
 export function horizon(b: BondFacts): Horizon {
-  const tMat = (b.daysMat ?? 0) / 365;
+  // Горизонт — от даты расчётов, из той же даты, что и t купонов (купон в дату погашения тогда t == tMat и не выпадает).
+  // Без MATDATE — DAYSTOREDEMPTION (дни от «сегодня» по МСК) за вычетом дней до расчётов.
+  const tMat = b.matIso
+    ? yearsFrom(b.settleIso, b.matIso)
+    : Math.max(0, (b.daysMat ?? 0) - daysBetween(b.todayIso, b.settleIso)) / 365;
   if (b.offerKind === "put" && b.offerDateIso) {
-    const t = (Date.parse(b.offerDateIso) - Date.parse(b.todayIso)) / 86_400_000 / 365;
+    const t = yearsFrom(b.settleIso, b.offerDateIso);
     const remain = (b.face ?? 0) - b.amortFuture.filter((a) => a.t < t).reduce((s, a) => s + a.value, 0);
     return { t, red: (remain * (b.offerPrice ?? 100)) / 100, label: "оферты " + dmy(b.offerDateIso), dateIso: b.offerDateIso, kind: "offer" };
   }
@@ -161,8 +167,8 @@ export function yieldModel(
   m.afterTax = afterTax(b, cleanPct, k, 1, h);
 
   if (b.offerKind === "call" && b.offerDateIso) {
-    const tC = (Date.parse(b.offerDateIso) - Date.parse(b.todayIso)) / 86_400_000 / 365;
-    const days = Math.round(tC * 365);
+    const tC = yearsFrom(b.settleIso, b.offerDateIso); // потоки — от даты расчётов
+    const days = daysBetween(b.todayIso, b.offerDateIso); // «через N дней» — от сегодня, как флаг 8 и product.offer.days_to
     const hc: Horizon = { t: tC, red: ((b.face ?? 0) * (b.offerPrice ?? 100)) / 100, label: "колла " + dmy(b.offerDateIso), dateIso: b.offerDateIso, kind: "call" };
     const cps = couponFlows(b, tC, 1);
     const recv = cps.reduce((s, c) => s + c[1], 0) + hc.red;

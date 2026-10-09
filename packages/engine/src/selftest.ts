@@ -40,7 +40,7 @@ ok("solve: дисконтная бумага 950→1000 за год ≈ 5,26%", 
 // Два пути: а) режима bonds/stock нет вовсе → «не торгуется» (флаг 6); б) режим есть, но в окне ни одной сделки → флаг 4.
 const noTrade = (over: Partial<BondFacts>): BondFacts => ({
   secid: "X", isin: null, boardid: null, shortname: "X", secname: null, regnumber: null, emit: null, kind: null,
-  todayIso: "2026-10-08", face: 1000, fu: "SUR", acc: 0, cp: 0, period: null, matIso: "2026-11-08", daysMat: 31,
+  todayIso: "2026-10-08", settleIso: "2026-10-09", face: 1000, fu: "SUR", acc: 0, cp: 0, period: null, matIso: "2026-11-08", daysMat: 31,
   nextCouponIso: null, ctype: "zero", r0: null, coupons: [], amortFuture: [], amortized: false,
   offerKind: "none", offerDateIso: null, offerPrice: null, offerPriceAssumedPar: false, reset: false,
   wap: null, prevWap: null, bid: null, offerQ: null, upd: null, tradeDateIso: null,

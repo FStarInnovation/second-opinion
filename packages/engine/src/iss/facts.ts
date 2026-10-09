@@ -7,10 +7,10 @@ import { CONFIG } from "../config";
 
 export interface CouponRow {
   dateIso: string;
-  t: number; // лет от today
+  t: number; // лет от даты расчётов (settleIso)
   value: number | null;
   valueprc: number | null;
-  future: boolean;
+  future: boolean; // dateIso > settleIso: купон достанется покупателю (выплаченный до расчётов — продавцу, ISS учитывает это в ACCRUEDINT)
 }
 
 export interface BondFacts {
@@ -22,9 +22,16 @@ export interface BondFacts {
   regnumber: string | null;
   emit: string | null; // emitent_title — из поиска (в №2 его нет, там только EMITTER_ID)
   kind: string | null; // TYPENAME
+  /** «Сегодня» — календарный день по МСК (или opts.todayIso). От него: показ «через N дней» (call.days, daysOffer флага 8,
+   *  product.offer.days_to), окно №4, дни до купона флоатера в dmod и сдвиг DAYSTOREDEMPTION в фоллбэке горизонта.
+   *  Потоки, горизонты, НКД и выбор будущей оферты — от settleIso. */
   todayIso: string;
+  /** Дата расчётов сделки — SETTLEDATE №1 securities (T+1; в пятницу — понедельник). Начало отсчёта t ВСЕХ потоков
+   *  и горизонтов: так считает биржа (EFFECTIVEYIELDWAPRICE, ACCRUEDINT), и с ней сходится свой расчёт.
+   *  Поля нет (нет борда / не торгуется) — следующий рабочий день после todayIso: сб/вс пропускаются, праздники биржи не учитываются. */
+  settleIso: string;
 
-  face: number | null; // FACEVALUE №1 (текущий номинал)
+  face: number | null; // FACEVALUEONSETTLEDATE №1 (номинал на дату расчётов), иначе FACEVALUE
   fu: string; // FACEUNIT
   acc: number | null; // ACCRUEDINT
   cp: number | null; // COUPONPERCENT
@@ -75,15 +82,31 @@ const dmy = (iso: string | null) =>
   iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : null;
 export { dmy };
 
-function yearsFrom(todayIso: string, iso: string): number {
-  return (Date.parse(iso) - Date.parse(todayIso)) / 86_400_000 / 365;
+export function yearsFrom(fromIso: string, iso: string): number {
+  return (Date.parse(iso) - Date.parse(fromIso)) / 86_400_000 / 365;
+}
+export function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((Date.parse(toIso) - Date.parse(fromIso)) / 86_400_000);
+}
+
+/** Календарный день по МСК (UTC+3; в РФ нет перехода на летнее время). С 00:00 до 03:00 МСК день по UTC
+ *  на единицу меньше, а биржа (SETTLEDATE, DAYSTOREDEMPTION, окно №4) живёт по МСК — отсюда расходились календари. */
+export function mskDay(d = new Date()): string {
+  return new Date(d.getTime() + 3 * 3_600_000).toISOString().slice(0, 10);
+}
+
+/** Следующий рабочий день после iso: сб/вс пропускаются, праздники биржи не учитываются (фоллбэк SETTLEDATE) */
+function nextBusinessDay(iso: string): string {
+  let d = new Date(Date.parse(iso) + 86_400_000);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d = new Date(d.getTime() + 86_400_000);
+  return d.toISOString().slice(0, 10);
 }
 
 export async function collectFacts(
   secid: string,
   opts: FetchOptions & { todayIso?: string } = {},
 ): Promise<BondFacts> {
-  const todayIso = opts.todayIso ?? new Date().toISOString().slice(0, 10);
+  const todayIso = opts.todayIso ?? mskDay();
 
   const d2 = await issJson(q.n2(secid), opts);
   const desc = Object.fromEntries(
@@ -120,6 +143,9 @@ export async function collectFacts(
   const md = d1 ? rows<Record<string, unknown>>(d1, "marketdata")[0] ?? {} : {};
   const my = d1 ? rows<Record<string, unknown>>(d1, "marketdata_yields")[0] ?? {} : {};
   const dv = d1 ? rows<Record<string, unknown>>(d1, "dataversion")[0] ?? {} : {};
+  // Дата расчётов: SETTLEDATE №1 (T+1, в пятницу — понедельник). Без борда или без торгов таблица securities пуста —
+  // берём следующий рабочий день после todayIso (праздники не учитываются).
+  const settleIso = isoDateOrNull(sec.SETTLEDATE) ?? nextBusinessDay(todayIso);
 
   const d3 = await issJson(q.n3(secid), opts);
   const couponRows = rows<Record<string, unknown>>(d3, "coupons");
@@ -142,19 +168,25 @@ export async function collectFacts(
     }
   }
 
-  const face = toNum(sec.FACEVALUE);
+  // Номинал — на дату расчётов, как и ACCRUEDINT: это пара к фильтру amortFuture `> settleIso` — частичная амортизация
+  // в (todayIso, settleIso] уходит продавцу и из потоков покупателя исключена, значит и номинал покупателя — уже без неё
+  // (с FACEVALUE цена P и остаток на горизонте были бы завышены на неё в эти 1–3 дня). На всех снимках golden/audit-fixtures
+  // поля равны. Для r0 флоатера (ниже) это даёт номинал на дату расчётов, а не на дату последнего купона — точнее брать
+  // bondization.valueprc, это WP-A.
+  const face = toNum(sec.FACEVALUEONSETTLEDATE) ?? toNum(sec.FACEVALUE);
   const period = toNum(sec.COUPONPERIOD);
   // COUPONPERCENT; если биржа его не отдаёт (бессрочные суборды ВТБ), восстанавливаем из COUPONVALUE × частота / номинал
   let cp = toNum(sec.COUPONPERCENT);
   if (cp == null) {
-    const cv = toNum(sec.COUPONVALUE ?? desc["COUPONVALUE"]), fv = toNum(sec.FACEVALUE ?? desc["FACEVALUE"]), fq = toNum(desc["COUPONFREQUENCY"]);
+    const cv = toNum(sec.COUPONVALUE ?? desc["COUPONVALUE"]), fv = face ?? toNum(desc["FACEVALUE"]), fq = toNum(desc["COUPONFREQUENCY"]);
     if (cv != null && fv && fq) cp = Math.round((cv * fq / fv) * 10000) / 100;
   }
   const bondtype = String(sec.BONDTYPE ?? desc["BOND_TYPE"] ?? "");
   const matIso = isoDateOrNull(sec.MATDATE ?? desc["MATDATE"]);
   const bondsubtype = String(sec.BONDSUBTYPE ?? desc["BOND_SUBTYPE"] ?? "");
 
-  // График купонов: сортировка по дате; limit=1000 обязателен — проверено
+  // График купонов: сортировка по дате; limit=1000 обязателен — проверено.
+  // t и future — от даты расчётов: купон до settleIso покупатель не получит (ISS уже учёл его в ACCRUEDINT)
   const coupons: CouponRow[] = couponRows
     .map((r) => ({
       dateIso: String(r.coupondate),
@@ -163,7 +195,7 @@ export async function collectFacts(
     }))
     .filter((r) => isoDateOrNull(r.dateIso))
     .sort((a, b) => a.dateIso.localeCompare(b.dateIso))
-    .map((r) => ({ ...r, t: yearsFrom(todayIso, r.dateIso), future: r.dateIso > todayIso }));
+    .map((r) => ({ ...r, t: yearsFrom(settleIso, r.dateIso), future: r.dateIso > settleIso }));
 
   // Тип купона (выбор блока формул, 2.3.3.1)
   const bondTypeName = String(desc["BOND_TYPE"] ?? "");
@@ -196,10 +228,10 @@ export async function collectFacts(
       (r) =>
         String(r.data_source) === "amortization" &&
         isoDateOrNull(String(r.amortdate)) &&
-        String(r.amortdate) > todayIso &&
+        String(r.amortdate) > settleIso &&
         String(r.amortdate) !== matIso,
     )
-    .map((r) => ({ t: yearsFrom(todayIso, String(r.amortdate)), value: toNum(r.value) ?? 0 }));
+    .map((r) => ({ t: yearsFrom(settleIso, String(r.amortdate)), value: toNum(r.value) ?? 0 }));
 
   // Оферта (П8): тип — из BONDSUBTYPE и дат опционов, offertype только для показа
   const putDate = isoDateOrNull(sec.PUTOPTIONDATE);
@@ -208,10 +240,16 @@ export async function collectFacts(
   if (/\(put\)/i.test(bondsubtype) || putDate) offerKind = "put";
   else if (/\(call\)/i.test(bondsubtype) || callDate) offerKind = "call";
 
+  // Будущие оферты — тоже от даты расчётов: к оферте в день ≤ settleIso покупатель с расчётами T+1 бумагу предъявить не успеет,
+  // а горизонт put/call от settleIso дал бы t ≤ 0
   const futureOffers = offerRows
     .map((r) => ({ dateIso: isoDateOrNull(String(r.offerdate)), price: toNum(r.price) }))
-    .filter((r) => r.dateIso && r.dateIso > todayIso)
+    .filter((r) => r.dateIso && r.dateIso > settleIso)
     .sort((a, b) => a.dateIso!.localeCompare(b.dateIso!));
+  // Приоритетный источник — PUT/CALLOPTIONDATE из №1: это «ближайшая оферта» самой биржи, к ней она считает доходность
+  // (YIELDDATETYPE = OFFER), и фильтром `> settleIso` его намеренно не режем — иначе накануне оферты бумага превращалась бы
+  // в «put/call без даты» (тексты F.4), а биржевой main остался бы к оферте. Дата ≤ settleIso здесь — вырожденный горизонт
+  // t ≤ 0 (solve → null без диагностики, как и раньше при дате == todayIso); явный статус для него — WP-F.
   const offerDateIso =
     (offerKind === "put" ? putDate : callDate) ?? futureOffers[0]?.dateIso ?? null;
   let offerPrice = toNum(sec.BUYBACKPRICE);
@@ -241,15 +279,18 @@ export async function collectFacts(
   }
 
   // НКД: для валютной бумаги ACCRUEDINT (в валюте расчётов) не используем —
-  // НКД_ном = COUPONVALUE × дни_с_последнего_купона / COUPONPERIOD (П12)
+  // НКД_ном = COUPONVALUE × дни_с_последнего_купона / COUPONPERIOD (П12); дни — до даты расчётов, как ACCRUEDINT биржи.
+  // Рублёвый ACCRUEDINT — биржевой как есть (он уже начислен на SETTLEDATE).
   const fu = String(sec.FACEUNIT ?? desc["FACEUNIT"] ?? "SUR");
   let acc = toNum(sec.ACCRUEDINT);
   if (fu !== "SUR" && fu !== "RUB") {
     const cpv = toNum(sec.COUPONVALUE);
     const nextIso = isoDateOrNull(sec.NEXTCOUPON);
     if (cpv != null && period && nextIso) {
-      const daysToNext = Math.round((Date.parse(nextIso) - Date.parse(todayIso)) / 86_400_000);
-      const daysSince = Math.max(0, period - daysToNext);
+      // Расчёты в день выплаты (NEXTCOUPON ≤ SETTLEDATE): НКД = 0 — купон уходит продавцу и из потоков покупателя
+      // уже исключён (future); иначе он был бы учтён дважды: в цене и в недополученном потоке
+      const daysToNext = daysBetween(settleIso, nextIso);
+      const daysSince = daysToNext <= 0 ? 0 : Math.max(0, period - daysToNext);
       acc = (cpv * daysSince) / period;
     }
   }
@@ -264,6 +305,7 @@ export async function collectFacts(
     emit,
     kind: (desc["TYPENAME"] as string) ?? null,
     todayIso,
+    settleIso,
     face,
     fu,
     acc,

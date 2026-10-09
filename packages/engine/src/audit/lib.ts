@@ -127,7 +127,7 @@ export function facts(over: Partial<BondFacts> = {}): BondFacts {
   const matIso = over.matIso ?? addDays(todayIso, 730);
   const base: BondFacts = {
     secid: "SYNTH", isin: "RU000SYNTH00", boardid: "TQCB", shortname: "Синтетика", secname: "Синтетическая облигация", regnumber: null,
-    emit: "ООО Синтетика", kind: "Корпоративная облигация", todayIso,
+    emit: "ООО Синтетика", kind: "Корпоративная облигация", todayIso, settleIso: todayIso,
     face: 1000, fu: "SUR", acc: 0, cp: 12, period: 182, matIso, daysMat: Math.round(yearsFrom(todayIso, matIso) * 365),
     nextCouponIso: addDays(todayIso, 182),
     ctype: "fixed", r0: null,
