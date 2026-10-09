@@ -1,0 +1,11 @@
+{
+  "query": "RU000A10ASE2",
+  "todayIso": "2026-10-09",
+  "inputs": {},
+  "captured_at": "2026-10-09T15:45:51.720Z",
+  "derived_from": "rolf_friday",
+  "edits": [
+    "marketdata_yields.EFFECTIVEYIELDWAPRICE: 20.0891 -> None"
+  ],
+  "note": "WP-C C.1: marketdata_yields.EFFECTIVEYIELDWAPRICE=null при marketdata.WAPRICE=102.02; доступна пара marketdata.YIELDATWAPRICE=20.09 ↔ WAPRICE=102.02 и вчерашняя YIELDATPREVWAPRICE=20.97 ↔ PREVWAPRICE=101.87"
+}

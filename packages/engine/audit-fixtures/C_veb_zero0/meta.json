@@ -1,0 +1,11 @@
+{
+  "query": "RU000A10FAP5",
+  "todayIso": "2026-10-09",
+  "inputs": {},
+  "captured_at": "2026-10-09T15:45:46.003Z",
+  "derived_from": "veb_zero",
+  "edits": [
+    "marketdata_yields.EFFECTIVEYIELDWAPRICE: -0.4601 -> 0"
+  ],
+  "note": "WP-C C.2: EFFECTIVEYIELDWAPRICE=0 (в оригинале −0.4601); marketdata.YIELDATWAPRICE=0 и securities.YIELDATPREVWAPRICE=0 — как в оригинале"
+}

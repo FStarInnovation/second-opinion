@@ -8,7 +8,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "audit": "tsx audit/harness.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.76",

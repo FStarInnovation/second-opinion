@@ -1,0 +1,14 @@
+{
+  "query": "RU000A10FAP5",
+  "todayIso": "2026-10-09",
+  "inputs": {},
+  "captured_at": "2026-10-09T15:45:46.003Z",
+  "derived_from": "veb_zero",
+  "edits": [
+    "marketdata.WAPRICE: 100.78 -> None",
+    "marketdata.YIELDATWAPRICE: 0 -> None",
+    "marketdata_yields.WAPRICE: 100.78 -> None",
+    "marketdata_yields.EFFECTIVEYIELDWAPRICE: -0.4601 -> None"
+  ],
+  "note": "WP-C C.2: сегодняшних WAPRICE/доходностей нет (до первой сделки); PREVWAPRICE=100.59, YIELDATPREVWAPRICE=0 (оригинал)"
+}
