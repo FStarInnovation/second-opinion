@@ -1,0 +1,262 @@
+{
+  "kind": "report",
+  "report": {
+    "schema": "bond_report@1",
+    "product_type": "bond",
+    "built_at": "2026-10-09T07:11:19.438Z",
+    "data_time": {
+      "updatetime": "09:55:44",
+      "trade_date": "2026-10-09",
+      "line": "Данные Мосбиржи на 09:55 МСК, 09.10.2026. Задержка до 15 минут"
+    },
+    "security": {
+      "secid": "RU000A10F5J8",
+      "isin": "RU000A10F5J8",
+      "boardid": "TQCB",
+      "shortname": "ВТБСУБТ1Р1",
+      "name": "Банк ВТБ СУБ-Т1-Р1",
+      "regnumber": "4-14-01000-B",
+      "emitent_title": "Банк ВТБ (публичное акционерное общество)",
+      "typename": "Корпоративная облигация"
+    },
+    "status": {
+      "kind": "perpetual",
+      "reason": "бессрочная облигация: даты погашения нет, доходность к погашению не определена"
+    },
+    "product": {
+      "plain_text": "Бессрочная субординированная облигация Банк ВТБ (публичное акционерное общество): даты погашения нет, фиксированный купон 19,55% годовых, без оферты. Купон может быть отменён, номинал — списан при снижении капитала банка. Номинал в рублях.",
+      "coupon_kind": "fixed",
+      "coupon_label": "фиксированный 19,55%",
+      "amortization": false,
+      "offer": {
+        "type": "none",
+        "date": null,
+        "price_pct": null,
+        "price_assumed_par": false,
+        "days_to": null
+      },
+      "faceunit": "SUR",
+      "currency_word": "рублях",
+      "listlevel": 3,
+      "qualified": true,
+      "maturity_date": null
+    },
+    "claim": {
+      "promised_pct": 20,
+      "promised_text": null,
+      "source": "field",
+      "gap_pp": null,
+      "line": null
+    },
+    "yield": {
+      "kind": "not_calculated",
+      "horizon": null,
+      "horizon_date": null,
+      "horizon_label": "погашения —",
+      "values": [],
+      "main_pct": null,
+      "period_income": null,
+      "exchange": {
+        "pct": 0,
+        "price_pct": 70.17,
+        "datetype": "MATDATE",
+        "used_as_main": false
+      },
+      "own_control_pct": null,
+      "control_diff_pp": null,
+      "not_calculated_reason": "Не рассчитана: у бумаги нет даты погашения. Текущий купон — 19,55% годовых от номинала, но вернуть номинал можно только продажей на бирже.",
+      "line": "Не рассчитана: у бумаги нет даты погашения. Текущий купон — 19,55% годовых от номинала, но вернуть номинал можно только продажей на бирже."
+    },
+    "price": {
+      "clean_pct": 70.49,
+      "prev_used": false,
+      "from_user": false,
+      "facevalue": 74774,
+      "accruedint": 5113.7,
+      "full_price": null,
+      "clean_price": null,
+      "next_coupon_date": "06.12.2026",
+      "currency": "RUB",
+      "line": null
+    },
+    "liquidity": {
+      "traded": true,
+      "avg_turnover": 13675965,
+      "days_counted": 20,
+      "trades_per_day": 71.55,
+      "spread_pct": 0.64,
+      "spread_missing_side": false,
+      "position_size": 500000,
+      "share_pct": 3.66,
+      "exit_now_pct": 0.3192,
+      "exit_now_money": 1596,
+      "exit_days": 1,
+      "category": "норм",
+      "no_exit": false,
+      "line": "При позиции 500 000 ₽ стоимость моментального выхода ≈ 0,32%, аккуратного выхода ≈ 1 день. Категория ликвидности — норм.",
+      "metrics_line": "За 20 торговых дней: средний оборот 13,7 млн ₽ в день, 72 сделки в день; спред 0,64%."
+    },
+    "fees_tax": {
+      "k_pct": null,
+      "k_grid": [],
+      "pre_tax_pct": null,
+      "post_tax_pct": null,
+      "tax_note": "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
+      "line": "Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: — до налога по графику выплат и — после налога 13%."
+    },
+    "worst": [],
+    "flags": [
+      {
+        "id": 1,
+        "title": "Только для квалифицированных инвесторов",
+        "text": "Регулятор признал инструмент сложным для массового инвестора.",
+        "fired": true,
+        "points": 10,
+        "details": "ISQUALIFIEDINVESTORS = 1"
+      },
+      {
+        "id": 2,
+        "title": "Низкий уровень листинга",
+        "text": "Минимальные требования биржи к эмитенту по раскрытию информации.",
+        "fired": true,
+        "points": 10,
+        "details": "LISTLEVEL = 3"
+      },
+      {
+        "id": 3,
+        "title": "Высокая премия за риск",
+        "text": "Рынок оценивает кредитный риск эмитента как существенный.",
+        "fired": false,
+        "points": 0,
+        "details": "GSPREADBP = нет б.п."
+      },
+      {
+        "id": 4,
+        "title": "Неликвидный выпуск",
+        "text": "Мало оборота или сделок — выйти из позиции сложно.",
+        "fired": false,
+        "points": 0,
+        "details": "за 20 дн.: 13,7 млн ₽/день, 72 сделок/день"
+      },
+      {
+        "id": 5,
+        "title": "Широкий спред",
+        "text": "Большая разница между ценой покупки и продажи — потеря при каждой сделке.",
+        "fired": false,
+        "points": 0,
+        "details": "спред 0,64%"
+      },
+      {
+        "id": 6,
+        "title": "Не торгуется",
+        "text": "Биржевых торгов нет — выйти через биржу нельзя.",
+        "fired": false,
+        "points": 0,
+        "details": "торгуется"
+      },
+      {
+        "id": 7,
+        "title": "Длинная дюрация",
+        "text": "Цена сильно реагирует на изменение ставок.",
+        "fired": false,
+        "points": 0,
+        "details": "DURATION = 0,0 г."
+      },
+      {
+        "id": 8,
+        "title": "Эмитент может погасить досрочно (call)",
+        "text": "Эмитент может погасить выпуск в выгодный для себя момент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 9,
+        "title": "Ставка после оферты неизвестна",
+        "text": "После оферты ставку купона назначит эмитент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 10,
+        "title": "Валютный риск",
+        "text": "Номинал не в рублях — к риску облигации добавляется курсовой.",
+        "fired": false,
+        "points": 0,
+        "details": "FACEUNIT = SUR"
+      },
+      {
+        "id": 11,
+        "title": "Плавающий купон",
+        "text": "Доход зависит от рыночной ставки и снизится вместе с ней.",
+        "fired": false,
+        "points": 0,
+        "details": "купон постоянный"
+      },
+      {
+        "id": 12,
+        "title": "Обещанная доходность выше реальной",
+        "text": "Вам обещали больше, чем бумага даёт на самом деле.",
+        "fired": false,
+        "points": 0,
+        "details": "заявленная не указана"
+      },
+      {
+        "id": 13,
+        "title": "Дефолт в истории выпуска",
+        "text": "По выпуску уже был дефолт или технический дефолт.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 14,
+        "title": "Структурный продукт",
+        "text": "Выплата зависит от базового актива или события, а не от купона — можно получить меньше номинала или только номинал.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 15,
+        "title": "Бессрочная субординированная",
+        "text": "Даты погашения нет; банк вправе отменить купон и списать номинал при снижении капитала — это не депозит.",
+        "fired": true,
+        "points": 40,
+        "details": "BOND_SUBTYPE = Бессрочные, SUBORDBOND = 1"
+      }
+    ],
+    "truth_score": {
+      "score": 40,
+      "grade": "Высокий риск",
+      "top3": [
+        15,
+        1,
+        2
+      ],
+      "more_count": 0,
+      "none_fired": false
+    },
+    "macro": null,
+    "panels": [
+      "data_line",
+      "product",
+      "yield",
+      "liquidity",
+      "flags_score",
+      "plaque"
+    ],
+    "inputs": {
+      "position_size": 500000,
+      "k_pct": null,
+      "promised_pct": 20,
+      "offer_price_pct": null
+    },
+    "diagnostics": {
+      "snapshot_dir": "golden/snapshots/perpetual",
+      "control_diff_pp": null,
+      "warnings": []
+    }
+  }
+}

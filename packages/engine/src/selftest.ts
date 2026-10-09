@@ -45,7 +45,7 @@ const noTrade = (over: Partial<BondFacts>): BondFacts => ({
   offerKind: "none", offerDateIso: null, offerPrice: null, offerPriceAssumedPar: false, reset: false,
   wap: null, prevWap: null, bid: null, offerQ: null, upd: null, tradeDateIso: null,
   moexY: null, moexYPrice: null, moexYDatetype: null, g: null, durDays: null,
-  stop: false, lvl: 3, qual: false, hasDefault: false, avg: null, avgNT: null, nDays: 0, ...over,
+  stop: false, structured: false, subordinated: false, perpetual: false, lvl: 3, qual: false, hasDefault: false, avg: null, avgNT: null, nDays: 0, ...over,
 });
 const ymNone = { status: "noPrice", main: null } as unknown as YieldModel;
 {
@@ -69,7 +69,7 @@ const ymNone = { status: "noPrice", main: null } as unknown as YieldModel;
 /* 2. Golden-кейсы из снимков */
 const meta = JSON.parse(fs.readFileSync(path.join(goldenDir, "cases.json"), "utf8")) as {
   todayIso: string;
-  cases: { name: string; query: string; inputs: Record<string, number> }[];
+  cases: { name: string; query: string; inputs: Record<string, number>; todayIso?: string }[];
 };
 
 const VOLATILE = new Set(["built_at", "snapshot_dir"]);
@@ -94,7 +94,7 @@ for (const c of meta.cases) {
   try {
     const res = await build(c.query, c.inputs, {
       fromSnapshotDir: snapDir,
-      todayIso: meta.todayIso,
+      todayIso: c.todayIso ?? meta.todayIso,
     });
     const expected = JSON.parse(fs.readFileSync(expFile, "utf8"));
     const a = JSON.stringify(strip(res));
@@ -132,7 +132,7 @@ for (const c of meta.cases) {
       const client = BondReport.parse(applyInputs(expected.report, v as any));
       const server = await build(c.query, { ...c.inputs, ...v } as any, {
         fromSnapshotDir: path.join(goldenDir, "snapshots", c.name),
-        todayIso: meta.todayIso,
+        todayIso: c.todayIso ?? meta.todayIso,
       });
       const a = JSON.stringify(strip(client));
       const b = JSON.stringify(strip(server.kind === "report" ? server.report : server));

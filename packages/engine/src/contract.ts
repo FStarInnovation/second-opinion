@@ -7,7 +7,7 @@ import { z } from "zod";
 
 export const SCHEMA_ID = "bond_report@1" as const;
 
-export const StatusKind = z.enum(["ok", "no_price", "not_traded", "no_coupon_rate"]);
+export const StatusKind = z.enum(["ok", "no_price", "not_traded", "no_coupon_rate", "structured", "perpetual"]);
 
 export const PanelId = z.enum([
   "data_line", "product", "claim", "yield", "price_line", "ask_price",
@@ -136,7 +136,7 @@ export const BondReport = z.object({
   ),
   flags: z.array(
     z.object({
-      id: num.int().min(1).max(13),
+      id: num.int().min(1).max(15), // 1–13 по постановке, 14 структурная, 15 бессрочная (09.10.2026)
       title: z.string(),
       text: z.string(),
       fired: z.boolean(),

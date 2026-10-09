@@ -104,7 +104,7 @@ export function afterTax(
 
 /* ───── модель доходности (2.3.3.1 + ветки) ───── */
 export interface YieldModel {
-  status: "ok" | "noRate" | "noPrice";
+  status: "ok" | "noRate" | "noPrice" | "structured" | "perpetual";
   h: Horizon;
   cleanPct: number | null;
   priceFromUser: boolean;
@@ -113,6 +113,9 @@ export interface YieldModel {
   scen: (number | null)[] | null;
   main: number | null;
   own: number | null;
+  /** Свой расчёт ОТ ЦЕНЫ БИРЖИ (moexYPrice) — для контроля формулы; own считается от показанной цены (WAPRICE/PREVWAPRICE),
+   *  а внутри дня они расходятся, и контроль ловил бы движение цены, а не ошибку расчёта (ЧеркизБ2P1 09.10: 1,06 п.п. при одинаковой формуле) */
+  ownAtMoexPrice: number | null;
   useMoex: boolean;
   withComm: number | null;
   afterTax: number | null;
@@ -129,10 +132,14 @@ export function yieldModel(
   const prevUsed = opts.userPrice == null && b.wap == null && b.prevWap != null;
   const m: YieldModel = {
     status: "ok", h, cleanPct, priceFromUser: opts.userPrice != null,
-    clean: null, P: null, scen: null, main: null, own: null, useMoex: false,
+    clean: null, P: null, scen: null, main: null, own: null, ownAtMoexPrice: null, useMoex: false,
     withComm: null, afterTax: null, call: null,
   };
   void prevUsed;
+  // Структурная нота: выплата зависит от базового актива — по купону и цене доходность не считается (биржа отдаёт 0).
+  // Бессрочная: горизонта «погашение» нет — доходность к погашению не определена.
+  if (b.structured) { m.status = "structured"; return m; }
+  if (b.perpetual) { m.status = "perpetual"; return m; }
   if (b.ctype === "float" && b.r0 == null) { m.status = "noRate"; return m; }
   if (cleanPct == null) { m.status = "noPrice"; return m; }
   m.clean = (cleanPct * (b.face ?? 0)) / 100;
@@ -144,8 +151,9 @@ export function yieldModel(
     m.own = m.scen[0];
   } else {
     m.own = yieldOf(b, cleanPct, 0, 1, h);
+    if (b.moexY != null && b.moexYPrice != null) m.ownAtMoexPrice = yieldOf(b, b.moexYPrice, 0, 1, h);
     // Биржевую пару WAPRICE → EFFECTIVEYIELDWAPRICE используем как основную (вопрос 4);
-    // свой расчёт — контроль (>0,5 п.п. — предупреждение)
+    // свой расчёт от той же цены — контроль (>0,5 п.п. — предупреждение)
     m.useMoex = !m.priceFromUser && b.moexY != null && (b.fu === "SUR" || b.fu === "RUB");
     m.main = m.useMoex ? b.moexY : m.own;
   }
@@ -236,8 +244,9 @@ export function flags(
     liq.missing
       ? "В стакане нет встречных заявок — быстро продать по справедливой цене нельзя."
       : "Большая разница между ценой покупки и продажи — потеря при каждой сделке.",
-    liq.missing || (liq.spread != null && liq.spread > C.spreadPct), C.spreadPts,
-    liq.missing ? "нет BID или OFFER" : "спред " + pctS(liq.spread));
+    // у бумаги без торгов стакана нет по определению — это уже флаг 6, пустой спред не штрафуем второй раз
+    !b.stop && (liq.missing || (liq.spread != null && liq.spread > C.spreadPct)), C.spreadPts,
+    b.stop ? "не считается: торгов нет (флаг 6)" : liq.missing ? "нет BID или OFFER" : "спред " + pctS(liq.spread));
   add(6, "Не торгуется", "Биржевых торгов нет — выйти через биржу нельзя.",
     b.stop, C.notTradedPts, !b.stop ? "торгуется" : b.boardid ? "is_traded = 0" : "нет режима биржевых торгов bonds/stock");
   const durY = (b.durDays ?? 0) / 365;
@@ -270,6 +279,14 @@ export function flags(
     F12.fired, F12.points, F12.details);
   add(13, "Дефолт в истории выпуска", "По выпуску уже был дефолт или технический дефолт.",
     b.hasDefault, C.defaultPts, b.hasDefault ? "HASDEFAULT = 1" : "нет");
+  add(14, "Структурный продукт",
+    "Выплата зависит от базового актива или события, а не от купона — можно получить меньше номинала или только номинал.",
+    b.structured, C.structuredPts, b.structured ? "STRUCTBOND = 1" : "нет");
+  add(15, b.subordinated ? "Бессрочная субординированная" : "Бессрочная",
+    b.subordinated
+      ? "Даты погашения нет; банк вправе отменить купон и списать номинал при снижении капитала — это не депозит."
+      : "Даты погашения нет — вернуть номинал можно только продажей на бирже или по решению эмитента о выкупе.",
+    b.perpetual, C.perpetualPts, b.perpetual ? "BOND_SUBTYPE = Бессрочные" + (b.subordinated ? ", SUBORDBOND = 1" : "") : "нет");
 
   const fired = F.filter((f) => f.fired).sort((a, c) => c.points - a.points);
   const score = Math.max(0, 100 - fired.reduce((s, f) => s + f.points, 0));
@@ -340,5 +357,9 @@ export function plainText(b: BondFacts): string {
       : "эмитент может погасить досрочно, дата в данных биржи не указана";
   else o = "без оферты";
   const amort = b.amortized ? "с амортизацией" : "без амортизации";
+  if (b.structured)
+    return `Структурная облигация ${b.emit ?? ""} на ${termPhrase(b.daysMat ?? 0)}: купон ${fmtMax(b.cp ?? 0, 2)}%, основная выплата зависит от базового актива или события — условия в решении о выпуске, по биржевым данным не видны. ${b.qual ? "Только для квалифицированных инвесторов. " : ""}Номинал в ${curWord(b.fu)}.`;
+  if (b.perpetual)
+    return `${b.subordinated ? "Бессрочная субординированная облигация" : "Бессрочная облигация"} ${b.emit ?? ""}: даты погашения нет, ${c}, ${o}. ${b.subordinated ? "Купон может быть отменён, номинал — списан при снижении капитала банка. " : ""}Номинал в ${curWord(b.fu)}.`;
   return `${b.kind ?? "Облигация"} ${b.emit ?? ""} на ${termPhrase(b.daysMat ?? 0)}, ${c}, ${amort}, ${o}. Номинал в ${curWord(b.fu)}.`;
 }

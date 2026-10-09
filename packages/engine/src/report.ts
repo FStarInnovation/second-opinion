@@ -36,6 +36,8 @@ export function assembleReport(
   let statusKind: BondReportT["status"]["kind"] = "ok";
   let statusReason: string | null = null;
   if (b.stop) { statusKind = "not_traded"; statusReason = "Бумага не торгуется на Мосбирже — внебиржевой или погашенный выпуск."; }
+  else if (ym.status === "structured") { statusKind = "structured"; statusReason = "структурная облигация: выплата зависит от базового актива, доходность по биржевым данным не рассчитывается"; }
+  else if (ym.status === "perpetual") { statusKind = "perpetual"; statusReason = "бессрочная облигация: даты погашения нет, доходность к погашению не определена"; }
   else if (ym.status === "noRate") { statusKind = "no_coupon_rate"; statusReason = "ставка первого купона ещё не опубликована"; }
   else if (ym.status === "noPrice") { statusKind = "no_price"; statusReason = "нет цены"; }
 
@@ -49,6 +51,14 @@ export function assembleReport(
   if (statusKind === "no_coupon_rate") {
     yKind = "not_calculated";
     notCalc = "Не рассчитана: ставка первого купона ещё не опубликована";
+    yLine = notCalc;
+  } else if (statusKind === "structured") {
+    yKind = "not_calculated";
+    notCalc = "Не рассчитана: это структурная облигация — доход зависит от базового актива, а не от купона. Что именно обещано, видно только в документе продавца.";
+    yLine = notCalc;
+  } else if (statusKind === "perpetual") {
+    yKind = "not_calculated";
+    notCalc = `Не рассчитана: у бумаги нет даты погашения. Текущий купон — ${b.ctype === "fixed" ? fmtMax(b.cp ?? 0, 2) + "% годовых от номинала" : "—"}, но вернуть номинал можно только продажей на бирже.`;
     yLine = notCalc;
   } else if (statusKind === "no_price") {
     yKind = "not_calculated";
@@ -80,10 +90,12 @@ export function assembleReport(
     if (b.fu !== "SUR" && b.fu !== "RUB") yLine += ` Доходность в ${curWord(b.fu)}.`;
   }
 
+  // Контроль формулы: свой расчёт от той же цены, что у биржи (moexYPrice), против EFFECTIVEYIELDWAPRICE
+  const ownCtl = ym.ownAtMoexPrice ?? ym.own;
   const controlDiff =
-    ym.own != null && b.moexY != null ? round2(Math.abs(ym.own - b.moexY)) : null;
+    ownCtl != null && b.moexY != null ? round2(Math.abs(ownCtl - b.moexY)) : null;
   if (controlDiff != null && controlDiff > CONFIG.controlWarnPp)
-    warnings.push(`контроль: свой расчёт ${pctS(ym.own)} отличается от биржевого ${pctS(b.moexY)} на ${fmt(controlDiff, 2)} п.п.`);
+    warnings.push(`контроль: свой расчёт ${pctS(ownCtl)} от цены биржи ${fmt(b.moexYPrice ?? 0, 2)}% отличается от биржевого ${pctS(b.moexY)} на ${fmt(controlDiff, 2)} п.п.`);
 
   /* строка цены */
   const prevUsed = userPrice == null && b.wap == null && b.prevWap != null;
@@ -168,7 +180,7 @@ export function assembleReport(
         datetype: b.moexYDatetype,
         used_as_main: ym.useMoex,
       },
-      own_control_pct: ym.own == null ? null : round2(ym.own),
+      own_control_pct: ownCtl == null ? null : round2(ownCtl),
       control_diff_pp: controlDiff,
       not_calculated_reason: notCalc,
       line: yLine,

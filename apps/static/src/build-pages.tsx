@@ -25,7 +25,7 @@ const goldenDir = path.join(root, "packages/engine/golden");
 const outArg = process.argv.indexOf("--out");
 const dist = path.resolve(outArg > 0 ? process.argv[outArg + 1] : path.join(here, "..", "dist"));
 
-interface Case { name: string; query: string; inputs: Record<string, number>; checks: string }
+interface Case { name: string; query: string; inputs: Record<string, number>; checks: string; todayIso?: string }
 const meta = JSON.parse(fs.readFileSync(path.join(goldenDir, "cases.json"), "utf8")) as { todayIso: string; cases: Case[] };
 
 fs.rmSync(dist, { recursive: true, force: true });
@@ -48,7 +48,7 @@ const results: { c: Case; res: BuildResultT }[] = [];
 for (const c of meta.cases) {
   const res = await build(c.query, c.inputs, {
     fromSnapshotDir: path.join(goldenDir, "snapshots", c.name),
-    todayIso: meta.todayIso,
+    todayIso: c.todayIso ?? meta.todayIso,
   });
   results.push({ c, res });
 }

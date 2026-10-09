@@ -59,6 +59,9 @@ export interface BondFacts {
   durDays: number | null; // DURATION, дней
 
   stop: boolean; // флаг 6: is_traded = 0 во всех режимах bonds/stock — или режимов нет вовсе (boardid = null)
+  structured: boolean; // STRUCTBOND = 1 / BOND_TYPE «Структурная облигация»: выплата зависит от базового актива, не от купона
+  subordinated: boolean; // SUBORDBOND = 1: субординированная (купон можно отменить, номинал — списать)
+  perpetual: boolean; // BOND_SUBTYPE «Бессрочные» или нет MATDATE: доходность к погашению не определена
   lvl: number | null; // LISTLEVEL (№2)
   qual: boolean; // ISQUALIFIEDINVESTORS (№2)
   hasDefault: boolean; // HASDEFAULT | HASTECHNICALDEFAULT (№2)
@@ -141,8 +144,14 @@ export async function collectFacts(
 
   const face = toNum(sec.FACEVALUE);
   const period = toNum(sec.COUPONPERIOD);
-  const cp = toNum(sec.COUPONPERCENT);
+  // COUPONPERCENT; если биржа его не отдаёт (бессрочные суборды ВТБ), восстанавливаем из COUPONVALUE × частота / номинал
+  let cp = toNum(sec.COUPONPERCENT);
+  if (cp == null) {
+    const cv = toNum(sec.COUPONVALUE ?? desc["COUPONVALUE"]), fv = toNum(sec.FACEVALUE ?? desc["FACEVALUE"]), fq = toNum(desc["COUPONFREQUENCY"]);
+    if (cv != null && fv && fq) cp = Math.round((cv * fq / fv) * 10000) / 100;
+  }
   const bondtype = String(sec.BONDTYPE ?? desc["BOND_TYPE"] ?? "");
+  const matIso = isoDateOrNull(sec.MATDATE ?? desc["MATDATE"]);
   const bondsubtype = String(sec.BONDSUBTYPE ?? desc["BOND_SUBTYPE"] ?? "");
 
   // График купонов: сортировка по дате; limit=1000 обязателен — проверено
@@ -157,9 +166,14 @@ export async function collectFacts(
     .map((r) => ({ ...r, t: yearsFrom(todayIso, r.dateIso), future: r.dateIso > todayIso }));
 
   // Тип купона (выбор блока формул, 2.3.3.1)
+  const bondTypeName = String(desc["BOND_TYPE"] ?? "");
+  const structured = String(desc["STRUCTBOND"] ?? "") === "1" || /структурн/i.test(bondTypeName);
+  const subordinated = String(desc["SUBORDBOND"] ?? "") === "1";
+  const perpetual = /бессрочн/i.test(bondsubtype) || (matIso == null && desc["DAYSTOREDEMPTION"] == null && sec.DAYSTOREDEMPTION == null);
   let ctype: BondFacts["ctype"];
   if (secid.startsWith("SU52")) ctype = "linker";
   else if (/плавающ/i.test(bondtype)) ctype = "float";
+  else if (/дисконтн/i.test(bondTypeName)) ctype = "zero";
   // Дисконтная бумага: COUPONPERCENT пуст или 0 и ни одного ненулевого купона в графике
   else if ((cp === null || cp === 0) && coupons.every((c) => !c.value)) ctype = "zero";
   else ctype = "fixed";
@@ -172,14 +186,18 @@ export async function collectFacts(
     if (lastPaid?.value != null) r0 = (lastPaid.value / face) * (365 / period) * 100;
   }
 
-  // Амортизация: есть строки data_source='amortization'
+  // Амортизация: есть строки data_source='amortization'.
+  // Строка на дату погашения (у части выпусков ISS помечает её тоже 'amortization', а не 'maturity') в
+  // amortFuture не входит: остаток номинала на погашении считает horizonRed — иначе он удваивался
+  // (ПКБ 1Р-12, 09.10.2026: свой расчёт 29,29% против биржевых 18,88%).
   const amortized = amortRows.some((r) => String(r.data_source) === "amortization");
   const amortFuture = amortRows
     .filter(
       (r) =>
         String(r.data_source) === "amortization" &&
         isoDateOrNull(String(r.amortdate)) &&
-        String(r.amortdate) > todayIso,
+        String(r.amortdate) > todayIso &&
+        String(r.amortdate) !== matIso,
     )
     .map((r) => ({ t: yearsFrom(todayIso, String(r.amortdate)), value: toNum(r.value) ?? 0 }));
 
@@ -251,7 +269,7 @@ export async function collectFacts(
     acc,
     cp,
     period,
-    matIso: isoDateOrNull(sec.MATDATE ?? desc["MATDATE"]),
+    matIso,
     daysMat: toNum(desc["DAYSTOREDEMPTION"]),
     nextCouponIso: isoDateOrNull(sec.NEXTCOUPON),
     ctype,
@@ -275,7 +293,7 @@ export async function collectFacts(
     moexYDatetype,
     g: toNum(my.GSPREADBP),
     durDays: toNum(my.DURATION) ?? toNum(md.DURATION),
-    stop,
+    stop, structured, subordinated, perpetual,
     lvl: toNum(desc["LISTLEVEL"]),
     qual: toNum(desc["ISQUALIFIEDINVESTORS"]) === 1,
     hasDefault:

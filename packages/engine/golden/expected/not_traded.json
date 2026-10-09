@@ -1,0 +1,258 @@
+{
+  "kind": "report",
+  "report": {
+    "schema": "bond_report@1",
+    "product_type": "bond",
+    "built_at": "2026-10-09T07:11:40.252Z",
+    "data_time": {
+      "updatetime": null,
+      "trade_date": "2026-10-09",
+      "line": "Данные Мосбиржи на 09.10.2026. Задержка до 15 минут"
+    },
+    "security": {
+      "secid": "RU000A10CZA1",
+      "isin": "RU000A10CZA1",
+      "boardid": "TQCB",
+      "shortname": "СамолетP20",
+      "name": "ГК Самолет БО-П20",
+      "regnumber": "4B02-20-16493-A-001P",
+      "emitent_title": "публичное акционерное общество \"Группа компаний \"Самолет\"",
+      "typename": "Биржевая облигация"
+    },
+    "status": {
+      "kind": "not_traded",
+      "reason": "Бумага не торгуется на Мосбирже — внебиржевой или погашенный выпуск."
+    },
+    "product": {
+      "plain_text": "Биржевая облигация публичное акционерное общество \"Группа компаний \"Самолет\" на 1 мес., фиксированный купон 20,96% годовых, без амортизации, без оферты. Номинал в рублях.",
+      "coupon_kind": "fixed",
+      "coupon_label": "фиксированный 20,96%",
+      "amortization": false,
+      "offer": {
+        "type": "none",
+        "date": null,
+        "price_pct": null,
+        "price_assumed_par": false,
+        "days_to": null
+      },
+      "faceunit": "SUR",
+      "currency_word": "рублях",
+      "listlevel": 1,
+      "qualified": false,
+      "maturity_date": "28.09.2026"
+    },
+    "claim": {
+      "promised_pct": 20,
+      "promised_text": null,
+      "source": "field",
+      "gap_pp": null,
+      "line": null
+    },
+    "yield": {
+      "kind": "not_calculated",
+      "horizon": null,
+      "horizon_date": "28.09.2026",
+      "horizon_label": "погашения 28.09.2026",
+      "values": [],
+      "main_pct": null,
+      "period_income": null,
+      "exchange": {
+        "pct": null,
+        "price_pct": null,
+        "datetype": null,
+        "used_as_main": false
+      },
+      "own_control_pct": null,
+      "control_diff_pp": null,
+      "not_calculated_reason": "Не рассчитана: биржевых торгов нет",
+      "line": "Не рассчитана: биржевых торгов нет"
+    },
+    "price": {
+      "clean_pct": null,
+      "prev_used": false,
+      "from_user": false,
+      "facevalue": null,
+      "accruedint": null,
+      "full_price": null,
+      "clean_price": null,
+      "next_coupon_date": null,
+      "currency": "RUB",
+      "line": null
+    },
+    "liquidity": {
+      "traded": false,
+      "avg_turnover": null,
+      "days_counted": 0,
+      "trades_per_day": null,
+      "spread_pct": null,
+      "spread_missing_side": true,
+      "position_size": 500000,
+      "share_pct": null,
+      "exit_now_pct": null,
+      "exit_now_money": null,
+      "exit_days": null,
+      "category": "—",
+      "no_exit": true,
+      "line": "Биржевых торгов по бумаге нет — выйти через биржу нельзя.",
+      "metrics_line": null
+    },
+    "fees_tax": {
+      "k_pct": null,
+      "k_grid": [],
+      "pre_tax_pct": null,
+      "post_tax_pct": null,
+      "tax_note": "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
+      "line": "Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: — до налога по графику выплат и — после налога 13%."
+    },
+    "worst": [],
+    "flags": [
+      {
+        "id": 1,
+        "title": "Только для квалифицированных инвесторов",
+        "text": "Регулятор признал инструмент сложным для массового инвестора.",
+        "fired": false,
+        "points": 0,
+        "details": "ISQUALIFIEDINVESTORS = 0"
+      },
+      {
+        "id": 2,
+        "title": "Низкий уровень листинга",
+        "text": "Минимальные требования биржи к эмитенту по раскрытию информации.",
+        "fired": false,
+        "points": 0,
+        "details": "LISTLEVEL = 1"
+      },
+      {
+        "id": 3,
+        "title": "Высокая премия за риск",
+        "text": "Рынок оценивает кредитный риск эмитента как существенный.",
+        "fired": false,
+        "points": 0,
+        "details": "GSPREADBP = нет б.п."
+      },
+      {
+        "id": 4,
+        "title": "Неликвидный выпуск",
+        "text": "Мало оборота или сделок — выйти из позиции сложно.",
+        "fired": false,
+        "points": 0,
+        "details": "сделок за последние 35 дней не было"
+      },
+      {
+        "id": 5,
+        "title": "Широкий спред",
+        "text": "В стакане нет встречных заявок — быстро продать по справедливой цене нельзя.",
+        "fired": false,
+        "points": 0,
+        "details": "не считается: торгов нет (флаг 6)"
+      },
+      {
+        "id": 6,
+        "title": "Не торгуется",
+        "text": "Биржевых торгов нет — выйти через биржу нельзя.",
+        "fired": true,
+        "points": 40,
+        "details": "is_traded = 0"
+      },
+      {
+        "id": 7,
+        "title": "Длинная дюрация",
+        "text": "Цена сильно реагирует на изменение ставок.",
+        "fired": false,
+        "points": 0,
+        "details": "DURATION = 0,0 г."
+      },
+      {
+        "id": 8,
+        "title": "Эмитент может погасить досрочно (call)",
+        "text": "Эмитент может погасить выпуск в выгодный для себя момент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 9,
+        "title": "Ставка после оферты неизвестна",
+        "text": "После оферты ставку купона назначит эмитент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 10,
+        "title": "Валютный риск",
+        "text": "Номинал не в рублях — к риску облигации добавляется курсовой.",
+        "fired": false,
+        "points": 0,
+        "details": "FACEUNIT = SUR"
+      },
+      {
+        "id": 11,
+        "title": "Плавающий купон",
+        "text": "Доход зависит от рыночной ставки и снизится вместе с ней.",
+        "fired": false,
+        "points": 0,
+        "details": "купон постоянный"
+      },
+      {
+        "id": 12,
+        "title": "Обещанная доходность выше реальной",
+        "text": "Вам обещали больше, чем бумага даёт на самом деле.",
+        "fired": false,
+        "points": 0,
+        "details": "заявленная не указана"
+      },
+      {
+        "id": 13,
+        "title": "Дефолт в истории выпуска",
+        "text": "По выпуску уже был дефолт или технический дефолт.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 14,
+        "title": "Структурный продукт",
+        "text": "Выплата зависит от базового актива или события, а не от купона — можно получить меньше номинала или только номинал.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 15,
+        "title": "Бессрочная",
+        "text": "Даты погашения нет — вернуть номинал можно только продажей на бирже или по решению эмитента о выкупе.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      }
+    ],
+    "truth_score": {
+      "score": 60,
+      "grade": "Много рисков",
+      "top3": [
+        6
+      ],
+      "more_count": 0,
+      "none_fired": false
+    },
+    "macro": null,
+    "panels": [
+      "data_line",
+      "product",
+      "flags_score",
+      "plaque"
+    ],
+    "inputs": {
+      "position_size": 500000,
+      "k_pct": null,
+      "promised_pct": 20,
+      "offer_price_pct": null
+    },
+    "diagnostics": {
+      "snapshot_dir": "golden/snapshots/not_traded",
+      "control_diff_pp": null,
+      "warnings": []
+    }
+  }
+}

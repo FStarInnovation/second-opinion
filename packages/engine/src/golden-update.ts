@@ -13,7 +13,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const goldenDir = path.join(here, "..", "golden");
 const write = process.argv.includes("--write");
 const meta = JSON.parse(fs.readFileSync(path.join(goldenDir, "cases.json"), "utf8")) as {
-  todayIso: string; cases: { name: string; query: string; inputs: Record<string, number> }[];
+  todayIso: string; cases: { name: string; query: string; inputs: Record<string, number>; todayIso?: string }[];
 };
 const VOLATILE = new Set(["built_at", "snapshot_dir"]);
 
@@ -34,7 +34,7 @@ function diff(a: unknown, b: unknown, p: string, out: string[]) {
 for (const c of meta.cases) {
   const res = await build(c.query, c.inputs, {
     fromSnapshotDir: path.join(goldenDir, "snapshots", c.name),
-    todayIso: meta.todayIso,
+    todayIso: c.todayIso ?? meta.todayIso,
   });
   const file = path.join(goldenDir, "expected", c.name + ".json");
   const old = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : undefined;

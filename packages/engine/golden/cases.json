@@ -13,6 +13,10 @@
     { "name": "pick-cherkizovo", "query": "Черкизово", "inputs": {}, "checks": "экран выбора по эмитенту" },
     { "name": "pick-program", "query": "4-01-10797-A-001P", "inputs": {}, "checks": "перебор 4B02-01…30 по номеру программы" },
     { "name": "notfound", "query": "RU000A10E2A5", "inputs": {}, "checks": "не найдена, ISIN корректного формата" },
-    { "name": "ofz26243-name", "query": "ОФЗ-26243-ПД", "inputs": {}, "checks": "ОФЗ по номеру выпуска: дефисное имя ISS не находит, резолв через «26243»" }
+    { "name": "ofz26243-name", "query": "ОФЗ-26243-ПД", "inputs": {}, "checks": "ОФЗ по номеру выпуска: дефисное имя ISS не находит, резолв через «26243»" },
+    { "name": "structured", "query": "RU000A10CEJ7", "inputs": { "promised_pct": 20 }, "todayIso": "2026-10-09", "checks": "структурная нота ВТБ (STRUCTBOND=1): доходность не рассчитана, флаг 14, «обещали» не сравнивается" },
+    { "name": "perpetual", "query": "RU000A10F5J8", "inputs": { "promised_pct": 20 }, "todayIso": "2026-10-09", "checks": "бессрочный суборд ВТБ (нет MATDATE, SUBORDBOND=1): купон из COUPONVALUE, флаг 15" },
+    { "name": "not_traded", "query": "RU000A10CZA1", "inputs": { "promised_pct": 20 }, "todayIso": "2026-10-09", "checks": "СамолетP20, is_traded=0: флаг 6, 4 блока" },
+    { "name": "pkb-amort", "query": "RU000A10G270", "inputs": { "promised_pct": 20 }, "todayIso": "2026-10-09", "checks": "амортизация со строкой на дату погашения: контроль Δ ≤ 0,5 (было 10,4)" }
   ]
 }

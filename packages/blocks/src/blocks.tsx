@@ -23,7 +23,8 @@ export function Product({ r }: { r: R }) {
   return (
     <Card id="product" block="product" title="Что это за продукт простыми словами">
       <p className="lead">{r.product.plain_text}</p>
-      {r.status.kind === "not_traded" && r.status.reason ? <p className="note note--bad">{r.status.reason}</p> : null}
+      {(r.status.kind === "not_traded" || r.status.kind === "structured" || r.status.kind === "perpetual") && r.status.reason
+        ? <p className="note note--bad">{r.status.reason}</p> : null}
     </Card>
   );
 }
@@ -179,7 +180,7 @@ export function FlagsScore({ r }: { r: R }) {
   const tone = scoreTone(t.score);
   const top = t.top3.map((id) => r.flags.find((f) => f.id === id)!).filter(Boolean);
   return (
-    <Card id="score" block="flags_score" title="Product Truth Score" sub="100 минус баллы за сработавшие red flags (13 правил)">
+    <Card id="score" block="flags_score" title="Product Truth Score" sub={`100 минус баллы за сработавшие red flags (${r.flags.length} правил)`}>
       <div className="score">
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <span className={"score__n tone-" + tone} data-score>{t.score}</span>

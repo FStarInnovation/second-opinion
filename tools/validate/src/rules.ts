@@ -16,7 +16,7 @@ const REGISTRY: Record<PanelIdT, { when: (r: BondReportT) => boolean; required: 
   claim: { when: (r) => r.claim.promised_pct != null, required: (r) => [["claim.line", r.claim.line], ["claim.gap_pp", r.claim.gap_pp]] },
   yield: {
     // status = ok; вариация not_calculated — у флоатера без выплаченных купонов (no_coupon_rate)
-    when: (r) => r.status.kind === "ok" || r.status.kind === "no_coupon_rate",
+    when: (r) => r.status.kind === "ok" || r.status.kind === "no_coupon_rate" || r.status.kind === "structured" || r.status.kind === "perpetual",
     required: (r) =>
       r.yield.kind === "not_calculated"
         ? [["yield.not_calculated_reason", r.yield.not_calculated_reason]]
@@ -45,6 +45,9 @@ function mustHave(r: BondReportT): { must: PanelIdT[]; mustNot: PanelIdT[] } {
     case "no_price": return { must: [...always, "ask_price"], mustNot: ["yield", "fees", "worst"] };
     case "not_traded": return { must: always, mustNot: ["yield", "liquidity", "fees", "ask_price", "claim"] };
     case "no_coupon_rate": return { must: [...always, "yield"], mustNot: ["fees", "ask_price"] };
+    // Структурная / бессрочная: доходность «не рассчитана» с объяснением, комиссий и worst-case нет
+    case "structured":
+    case "perpetual": return { must: [...always, "yield"], mustNot: ["fees", "worst", "ask_price", "claim"] };
   }
 }
 

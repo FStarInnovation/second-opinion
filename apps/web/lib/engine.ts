@@ -14,7 +14,7 @@ const TTL_MS = 15 * 60_000;
 const OFFLINE = process.env.SO_OFFLINE === "1";
 const GOLDEN = path.resolve(process.cwd(), "../../packages/engine/golden");
 
-interface Case { name: string; query: string }
+interface Case { name: string; query: string; todayIso?: string }
 let cases: { todayIso: string; cases: Case[] } | null = null;
 function goldenCases() {
   cases ??= JSON.parse(fs.readFileSync(path.join(GOLDEN, "cases.json"), "utf8"));
@@ -26,7 +26,7 @@ function snapshotFor(query: string): { dir: string; todayIso: string; query: str
   const g = goldenCases();
   const q = query.trim().toLowerCase();
   for (const c of g.cases) {
-    const found = { dir: path.join(GOLDEN, "snapshots", c.name), todayIso: g.todayIso, query: c.query };
+    const found = { dir: path.join(GOLDEN, "snapshots", c.name), todayIso: c.todayIso ?? g.todayIso, query: c.query };
     if (c.query.toLowerCase() === q) return found;
     const exp = JSON.parse(fs.readFileSync(path.join(GOLDEN, "expected", c.name + ".json"), "utf8"));
     if (exp.kind === "report") {

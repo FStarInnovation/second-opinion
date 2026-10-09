@@ -1,0 +1,262 @@
+{
+  "kind": "report",
+  "report": {
+    "schema": "bond_report@1",
+    "product_type": "bond",
+    "built_at": "2026-10-09T07:11:19.433Z",
+    "data_time": {
+      "updatetime": "09:00:19",
+      "trade_date": "2026-10-09",
+      "line": "Данные Мосбиржи на 09:00 МСК, 09.10.2026. Задержка до 15 минут"
+    },
+    "security": {
+      "secid": "RU000A10CEJ7",
+      "isin": "RU000A10CEJ7",
+      "boardid": "TQCB",
+      "shortname": "ВТБС1-1597",
+      "name": "Банк ВТБ (ПАО) С-1-1597",
+      "regnumber": "6-1597-01000-B-001P",
+      "emitent_title": "Банк ВТБ (публичное акционерное общество)",
+      "typename": "Корпоративная облигация"
+    },
+    "status": {
+      "kind": "structured",
+      "reason": "структурная облигация: выплата зависит от базового актива, доходность по биржевым данным не рассчитывается"
+    },
+    "product": {
+      "plain_text": "Структурная облигация Банк ВТБ (публичное акционерное общество) на 1 мес.: купон 0,01%, основная выплата зависит от базового актива или события — условия в решении о выпуске, по биржевым данным не видны. Только для квалифицированных инвесторов. Номинал в рублях.",
+      "coupon_kind": "fixed",
+      "coupon_label": "фиксированный 0,01%",
+      "amortization": false,
+      "offer": {
+        "type": "none",
+        "date": null,
+        "price_pct": null,
+        "price_assumed_par": false,
+        "days_to": null
+      },
+      "faceunit": "SUR",
+      "currency_word": "рублях",
+      "listlevel": 3,
+      "qualified": true,
+      "maturity_date": "13.11.2026"
+    },
+    "claim": {
+      "promised_pct": 20,
+      "promised_text": null,
+      "source": "field",
+      "gap_pp": null,
+      "line": null
+    },
+    "yield": {
+      "kind": "not_calculated",
+      "horizon": null,
+      "horizon_date": "13.11.2026",
+      "horizon_label": "погашения 13.11.2026",
+      "values": [],
+      "main_pct": null,
+      "period_income": null,
+      "exchange": {
+        "pct": 0,
+        "price_pct": 0.74,
+        "datetype": "MATDATE",
+        "used_as_main": false
+      },
+      "own_control_pct": null,
+      "control_diff_pp": null,
+      "not_calculated_reason": "Не рассчитана: это структурная облигация — доход зависит от базового актива, а не от купона. Что именно обещано, видно только в документе продавца.",
+      "line": "Не рассчитана: это структурная облигация — доход зависит от базового актива, а не от купона. Что именно обещано, видно только в документе продавца."
+    },
+    "price": {
+      "clean_pct": 0.74,
+      "prev_used": true,
+      "from_user": false,
+      "facevalue": 1000,
+      "accruedint": 0,
+      "full_price": null,
+      "clean_price": null,
+      "next_coupon_date": "13.11.2026",
+      "currency": "RUB",
+      "line": null
+    },
+    "liquidity": {
+      "traded": true,
+      "avg_turnover": 413,
+      "days_counted": 20,
+      "trades_per_day": 2.1,
+      "spread_pct": 45.95,
+      "spread_missing_side": false,
+      "position_size": 500000,
+      "share_pct": 121065.38,
+      "exit_now_pct": 22.973,
+      "exit_now_money": 114865,
+      "exit_days": 6054,
+      "category": "низкая",
+      "no_exit": false,
+      "line": "При позиции 500 000 ₽ стоимость моментального выхода ≈ 22,97%, аккуратного выхода ≈ 6054 дня. Категория ликвидности — низкая.",
+      "metrics_line": "За 20 торговых дней: средний оборот 413 ₽ в день, 2 сделки в день; спред 45,95%."
+    },
+    "fees_tax": {
+      "k_pct": null,
+      "k_grid": [],
+      "pre_tax_pct": null,
+      "post_tax_pct": null,
+      "tax_note": "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
+      "line": "Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: — до налога по графику выплат и — после налога 13%."
+    },
+    "worst": [],
+    "flags": [
+      {
+        "id": 1,
+        "title": "Только для квалифицированных инвесторов",
+        "text": "Регулятор признал инструмент сложным для массового инвестора.",
+        "fired": true,
+        "points": 10,
+        "details": "ISQUALIFIEDINVESTORS = 1"
+      },
+      {
+        "id": 2,
+        "title": "Низкий уровень листинга",
+        "text": "Минимальные требования биржи к эмитенту по раскрытию информации.",
+        "fired": true,
+        "points": 10,
+        "details": "LISTLEVEL = 3"
+      },
+      {
+        "id": 3,
+        "title": "Высокая премия за риск",
+        "text": "Рынок оценивает кредитный риск эмитента как существенный.",
+        "fired": false,
+        "points": 0,
+        "details": "GSPREADBP = нет б.п."
+      },
+      {
+        "id": 4,
+        "title": "Неликвидный выпуск",
+        "text": "Мало оборота или сделок — выйти из позиции сложно.",
+        "fired": true,
+        "points": 15,
+        "details": "за 20 дн.: 413 ₽/день, 2 сделок/день"
+      },
+      {
+        "id": 5,
+        "title": "Широкий спред",
+        "text": "Большая разница между ценой покупки и продажи — потеря при каждой сделке.",
+        "fired": true,
+        "points": 10,
+        "details": "спред 45,95%"
+      },
+      {
+        "id": 6,
+        "title": "Не торгуется",
+        "text": "Биржевых торгов нет — выйти через биржу нельзя.",
+        "fired": false,
+        "points": 0,
+        "details": "торгуется"
+      },
+      {
+        "id": 7,
+        "title": "Длинная дюрация",
+        "text": "Цена сильно реагирует на изменение ставок.",
+        "fired": false,
+        "points": 0,
+        "details": "DURATION = 0,0 г."
+      },
+      {
+        "id": 8,
+        "title": "Эмитент может погасить досрочно (call)",
+        "text": "Эмитент может погасить выпуск в выгодный для себя момент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 9,
+        "title": "Ставка после оферты неизвестна",
+        "text": "После оферты ставку купона назначит эмитент.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 10,
+        "title": "Валютный риск",
+        "text": "Номинал не в рублях — к риску облигации добавляется курсовой.",
+        "fired": false,
+        "points": 0,
+        "details": "FACEUNIT = SUR"
+      },
+      {
+        "id": 11,
+        "title": "Плавающий купон",
+        "text": "Доход зависит от рыночной ставки и снизится вместе с ней.",
+        "fired": false,
+        "points": 0,
+        "details": "купон постоянный"
+      },
+      {
+        "id": 12,
+        "title": "Обещанная доходность выше реальной",
+        "text": "Вам обещали больше, чем бумага даёт на самом деле.",
+        "fired": false,
+        "points": 0,
+        "details": "заявленная не указана"
+      },
+      {
+        "id": 13,
+        "title": "Дефолт в истории выпуска",
+        "text": "По выпуску уже был дефолт или технический дефолт.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      },
+      {
+        "id": 14,
+        "title": "Структурный продукт",
+        "text": "Выплата зависит от базового актива или события, а не от купона — можно получить меньше номинала или только номинал.",
+        "fired": true,
+        "points": 30,
+        "details": "STRUCTBOND = 1"
+      },
+      {
+        "id": 15,
+        "title": "Бессрочная",
+        "text": "Даты погашения нет — вернуть номинал можно только продажей на бирже или по решению эмитента о выкупе.",
+        "fired": false,
+        "points": 0,
+        "details": "нет"
+      }
+    ],
+    "truth_score": {
+      "score": 25,
+      "grade": "Высокий риск",
+      "top3": [
+        14,
+        4,
+        1
+      ],
+      "more_count": 2,
+      "none_fired": false
+    },
+    "macro": null,
+    "panels": [
+      "data_line",
+      "product",
+      "yield",
+      "liquidity",
+      "flags_score",
+      "plaque"
+    ],
+    "inputs": {
+      "position_size": 500000,
+      "k_pct": null,
+      "promised_pct": 20,
+      "offer_price_pct": null
+    },
+    "diagnostics": {
+      "snapshot_dir": "golden/snapshots/structured",
+      "control_diff_pp": null,
+      "warnings": []
+    }
+  }
+}
