@@ -22,7 +22,7 @@ export const CONFIG = {
     resetPts: 5, fxPts: 5, floatPts: 5,
     gapPp: 2, gapHighPp: 5, gapPts: 20, gapHighPts: 30,
     qualPts: 10, listPts: 10, defaultPts: 40,
-    structuredPts: 30, perpetualPts: 40, // предварительно (09.10.2026): подтвердить веса
+    structuredPts: 30, perpetualPts: 40, // П31–П32, веса подтверждены владельцем продукта 09.10.2026
   },
   grades: [
     [85, "Прозрачный продукт"],
