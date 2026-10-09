@@ -13,6 +13,14 @@ export interface CouponRow {
   future: boolean; // dateIso > settleIso: купон достанется покупателю (выплаченный до расчётов — продавцу, ISS учитывает это в ACCRUEDINT)
 }
 
+/** Опубликованная биржей пара «доходность ↔ цена» (см. BondFacts.moexPairs) */
+export interface MoexPair {
+  y: number; // % годовых, как отдала ISS; ровно 0 в ISS = «не рассчитано» — такой пары нет; отрицательная (бумага выше номинала) реальна
+  price: number; // % от номинала — цена, от которой биржа посчитала y (из той же таблицы ISS, что и y)
+  src: "marketdata_yields" | "marketdata" | "securities"; // таблица №1, откуда взята пара
+  datetype: string | null; // MATDATE | OFFER — YIELDDATETYPE из marketdata_yields (у marketdata/securities своего поля нет)
+}
+
 export interface BondFacts {
   secid: string;
   isin: string | null;
@@ -59,9 +67,18 @@ export interface BondFacts {
   upd: string | null; // UPDATETIME
   tradeDateIso: string | null;
 
-  moexY: number | null; // EFFECTIVEYIELDWAPRICE, иначе YIELDATPREVWAPRICE (№1 securities)
-  moexYPrice: number | null; // цена, от которой посчитана moexY
-  moexYDatetype: string | null; // MATDATE | OFFER
+  /** Пары «доходность ↔ цена», которые биржа опубликовала в №1, В ПОРЯДКЕ ЦЕПОЧКИ (первая — предпочтительная):
+   *  (1) marketdata_yields.EFFECTIVEYIELDWAPRICE ↔ marketdata_yields.WAPRICE, (2) marketdata.YIELDATWAPRICE ↔ marketdata.WAPRICE,
+   *  (3) securities.YIELDATPREVWAPRICE ↔ securities.PREVWAPRICE. Только валидные пары (есть и доходность, и цена; ровно 0 в
+   *  доходности = «не рассчитано» → пары нет). Для флоатеров пусто (2.3.3.1). Выбор одной пары — moexY/moexYPrice/moexYDatetype. */
+  moexPairs: MoexPair[];
+  /** ВЫБРАННАЯ пара из moexPairs: первая по цепочке, чья цена == показанной (wap ?? prevWap) — тогда moexAtShownPrice = true и её
+   *  доходность может быть главной (useMoex в yieldModel); такой нет — первая валидная пара, только для показа exchange и контроля
+   *  формулы (moexAtShownPrice = false, main = own); пар нет — null/null/null. */
+  moexY: number | null; // доходность выбранной пары, % годовых
+  moexYPrice: number | null; // цена, от которой биржа посчитала moexY (цена той же пары)
+  moexYDatetype: string | null; // MATDATE | OFFER — горизонт биржи для выбранной пары
+  moexAtShownPrice: boolean; // цена выбранной пары совпадает с показанной (|Δ| ≤ 1e-6) — «одна пара»: доходность и цена из одного источника
   g: number | null; // GSPREADBP
   durDays: number | null; // DURATION, дней
 
@@ -265,18 +282,36 @@ export async function collectFacts(
   const wap = toNum(md.WAPRICE);
   const prevWap = toNum(sec.PREVWAPRICE);
 
-  // Биржевая доходность: пара WAPRICE → EFFECTIVEYIELDWAPRICE (решение вопроса 4, 08.10);
-  // до первой сделки дня — PREVWAPRICE → YIELDATPREVWAPRICE из №1 securities.
-  // Для флоатеров EFFECTIVEYIELD не используем (2.3.3.1) — на живых данных отдаёт мусор.
-  let moexY: number | null = null;
-  let moexYPrice: number | null = null;
-  let moexYDatetype: string | null = null;
+  // Биржевая доходность — цепочка опубликованных пар «доходность ↔ цена» (аудит 09.10.2026, находка C и R2-29):
+  //   (1) marketdata_yields.EFFECTIVEYIELDWAPRICE ↔ marketdata_yields.WAPRICE (решение вопроса 4, 08.10),
+  //   (2) marketdata.YIELDATWAPRICE ↔ marketdata.WAPRICE (ISS временно не отдал (1) при той же цене — РОЛЬФ 09.10 12:46),
+  //       YIELDATWAPRICE округлён до 2 знаков и у бумаг с офертой может отличаться от EFFECTIVEYIELDWAPRICE на ~0,1 п.п. (ВЭБ.РФ 21 09.10: 9,73 vs 9,6161),
+  //   (3) securities.YIELDATPREVWAPRICE ↔ securities.PREVWAPRICE (до первой сделки дня).
+  // Каждое звено — доходность и цена, от которой она посчитана, из ОДНОЙ таблицы ISS; из разных не склеиваем. Раньше фоллбэк на
+  // вчерашнюю пару включался по moexY === null, а не по wap === null — отчёт показывал вчерашнюю доходность при сегодняшней цене.
+  // Ровно 0 в поле доходности ISS = «не рассчитано» → пары нет (toNum(0) проходил проверку на null и давал main = 0,00%);
+  // отрицательная доходность (бумага выше номинала) реальна и сохраняется. marketdata.YIELD ↔ LAST не используем: LAST не показывается.
+  // Для флоатеров биржевую доходность не используем вовсе (2.3.3.1) — на живых данных EFFECTIVEYIELD отдаёт мусор.
+  // YIELDDATETYPE есть только в marketdata_yields; для (2) и (3) берём его же — горизонт, к которому биржа считает бумагу, один.
+  const yNum = (v: unknown): number | null => { const n = toNum(v); return n === 0 ? null : n; };
+  const moexPairs: MoexPair[] = [];
   if (ctype !== "float") {
-    moexY = toNum(my.EFFECTIVEYIELDWAPRICE);
-    moexYPrice = toNum(my.WAPRICE);
-    if (moexY === null) { moexY = toNum(sec.YIELDATPREVWAPRICE); moexYPrice = prevWap; }
-    moexYDatetype = (my.YIELDDATETYPE as string) ?? null;
+    const datetype = (my.YIELDDATETYPE as string) ?? null;
+    const add = (src: MoexPair["src"], y: number | null, price: number | null) => {
+      if (y != null && price != null) moexPairs.push({ y, price, src, datetype });
+    };
+    add("marketdata_yields", yNum(my.EFFECTIVEYIELDWAPRICE), toNum(my.WAPRICE));
+    add("marketdata", yNum(md.YIELDATWAPRICE), toNum(md.WAPRICE));
+    add("securities", yNum(sec.YIELDATPREVWAPRICE), prevWap);
   }
+  // Выбор пары — по ПОКАЗАННОЙ цене. Без ввода пользователя показанная цена = wap ?? prevWap (то же, что cleanPct в yieldModel без
+  // userPrice), и она известна уже здесь — поэтому выбор делается в фактах, а не в модели. Первая по цепочке пара с той же ценой —
+  // может быть главной (useMoex); такой нет — первая валидная пара, только для exchange и контроля формулы (main = own от показанной
+  // цены); нет ни одной — null. При цене от пользователя биржа не используется (priceFromUser в yieldModel) — как и раньше.
+  const shownPrice = wap ?? prevWap;
+  const pairAtShown = shownPrice == null ? undefined : moexPairs.find((p) => Math.abs(p.price - shownPrice) <= 1e-6);
+  const moexPair = pairAtShown ?? moexPairs[0] ?? null;
+  const moexAtShownPrice = pairAtShown != null;
 
   // НКД: для валютной бумаги ACCRUEDINT (в валюте расчётов) не используем —
   // НКД_ном = COUPONVALUE × дни_с_последнего_купона / COUPONPERIOD (П12); дни — до даты расчётов, как ACCRUEDINT биржи.
@@ -330,9 +365,11 @@ export async function collectFacts(
     offerQ: toNum(md.OFFER),
     upd: (md.UPDATETIME as string) ?? null,
     tradeDateIso: (dv.trade_date as string) ?? null,
-    moexY,
-    moexYPrice,
-    moexYDatetype,
+    moexPairs,
+    moexY: moexPair?.y ?? null,
+    moexYPrice: moexPair?.price ?? null,
+    moexYDatetype: moexPair?.datetype ?? null,
+    moexAtShownPrice,
     g: toNum(my.GSPREADBP),
     durDays: toNum(my.DURATION) ?? toNum(md.DURATION),
     stop, structured, subordinated, perpetual,

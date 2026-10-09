@@ -3,7 +3,7 @@
   "report": {
     "schema": "bond_report@1",
     "product_type": "bond",
-    "built_at": "2026-10-09T07:11:19.394Z",
+    "built_at": "2026-10-09T23:03:54.856Z",
     "data_time": {
       "updatetime": "09:00:07",
       "trade_date": "2026-10-08",
@@ -57,7 +57,7 @@
       "main_pct": null,
       "period_income": null,
       "exchange": {
-        "pct": 0,
+        "pct": null,
         "price_pct": null,
         "datetype": null,
         "used_as_main": false

@@ -44,7 +44,7 @@ const noTrade = (over: Partial<BondFacts>): BondFacts => ({
   nextCouponIso: null, ctype: "zero", r0: null, coupons: [], amortFuture: [], amortized: false,
   offerKind: "none", offerDateIso: null, offerPrice: null, offerPriceAssumedPar: false, reset: false,
   wap: null, prevWap: null, bid: null, offerQ: null, upd: null, tradeDateIso: null,
-  moexY: null, moexYPrice: null, moexYDatetype: null, g: null, durDays: null,
+  moexPairs: [], moexY: null, moexYPrice: null, moexYDatetype: null, moexAtShownPrice: false, g: null, durDays: null,
   stop: false, structured: false, subordinated: false, perpetual: false, lvl: 3, qual: false, hasDefault: false, avg: null, avgNT: null, nDays: 0, ...over,
 });
 const ymNone = { status: "noPrice", main: null } as unknown as YieldModel;

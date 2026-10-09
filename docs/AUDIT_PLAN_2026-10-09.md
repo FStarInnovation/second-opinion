@@ -36,6 +36,7 @@
 ### WP-C — пара «цена ↔ доходность» и ноль
 **Изменение.** `facts.ts:236-240`: цепочка `EFFECTIVEYIELDWAPRICE↔my.WAPRICE → marketdata.YIELDATWAPRICE↔marketdata.WAPRICE → YIELDATPREVWAPRICE↔PREVWAPRICE`; `toNum(x) === 0 → null` для обоих полей доходности (отрицательные — реальны, не трогать). В `yieldModel`: `useMoex` только если `moexYPrice === cleanPct` (одна пара), иначе `main = own`. Юнит-тест на пустой `marketdata_yields` при заполненном `WAPRICE`.
 **Приёмка.** C.1 при `used_as_main` → `exchange.price_pct == price.clean_pct`; C.2 `EFFECTIVEYIELDWAPRICE=0` → `main ≠ 0`, `status ok`, own используется; C.3 (guard) отрицательная биржевая доходность сохраняется.
+**Выполнено 10.10.2026** (исполнитель + 2 ревью, оба `accept` без раунда правок; независимый выбор пары по сырым таблицам — 25 отчётов, 0 расхождений). Реализация: `BondFacts.moexPairs` (цепочка трёх пар, 0 → null, отрицательные сохраняются), выбор в `facts.ts` по показанной цене `wap ?? prevWap`; поля `moexY/moexYPrice/moexYDatetype` = выбранная пара (контроль like-for-like по цене, якорь T.1 цел), новое `moexAtShownPrice`; `useMoex` требует совпадения пары с показанной ценой. Решения: (а) при пустой цепочке `exchange.datetype = null` (раньше MATDATE без доходности); (б) тест-of-record для класса C — харнес (C.1/C.2), пополнение golden классом C — в WP-T; (в) `YIELDATWAPRICE` округлён до 2 знаков и у бумаг с офертой отличается от `EFFECTIVEYIELDWAPRICE` на ~0,1 п.п. — звено (2) используется только когда (1) нет. Эталоны: изменились только `exchange.{pct,price_pct,datetype}` 0 → null у cherk1p6/structured/perpetual (нерасчётные статусы); все остальные поля всех кейсов без изменений.
 
 ### WP-F — горизонт «колл»
 **Изменение.** `horizon()` возвращает `kind:"call"` когда биржа считает к коллу (`moexYDatetype==="OFFER"` и `offerKind==="call"`) или когда `main` заменён `call.y` через `min`; `label/dateIso` — дата колла. Число **не менять** (yield-to-worst прав). `ownAtMoexPrice` считать к горизонту биржи → контроль like-for-like. `report.ts:88` подписи («к коллу DD.MM.YYYY», «удержании до колла …»). Put без даты — текст без «null».
@@ -76,7 +77,7 @@
 |---|---|---|
 | 0 | Харнес RED, `baseline.json` записан | все проверки RED (кроме guard) |
 | 1 | WP-B ✅ 10.10.2026 | B.1–B.5 GREEN; control_diff на golden → 0 (факт) |
-| 2 | WP-C | C.1–C.3 GREEN |
+| 2 | WP-C ✅ 10.10.2026 | C.1–C.3 GREEN (факт) |
 | 3 | WP-F | F.1–F.3 GREEN |
 | 4 | WP-D (включить гейт) | D.1–D.3 GREEN; на AST0 fees/worst.call скрыты |
 | 5 | WP-A | A.1–A.4 GREEN; на AST0 гейт больше не срабатывает (own ≈ 15,5) |
@@ -104,6 +105,7 @@
 | веб `apps/web/audit` | 24 | 19 | 5 (H.8, S.3, R.6-web-guard, R.7-web-guard, R.8-guard) | 0 | 0 |
 
 **Обновление 10.10.2026 (после WP-B):** движок GREEN 9 (B.1–B.5 → GREEN) · RED 26 · SKIP 3 · ERROR 0; веб без изменений; `selftest` OK; baseline перезаписан.
+**После WP-C:** движок GREEN 11 (+C.1, C.2) · RED 24 · SKIP 3 · ERROR 0; веб без изменений; `selftest` OK; baseline перезаписан.
 
 `npm run audit` → exit 1 (есть RED — норма до правок); `npm run audit:engine -- --baseline` / `npm run audit:web -- --baseline` → exit 0 (не хуже базового). `tsc --noEmit` в обоих пакетах чист. Наполнение: 3 раунда «строитель → независимый проверяющий → ремонт» (46 + 16 агентов), все замечания закрыты или отклонены с обоснованием; оставшиеся границы — в разделе «Известные ограничения харнеса».
 

@@ -90,7 +90,8 @@ export function assembleReport(
     if (b.fu !== "SUR" && b.fu !== "RUB") yLine += ` Доходность в ${curWord(b.fu)}.`;
   }
 
-  // Контроль формулы: свой расчёт от той же цены, что у биржи (moexYPrice), против EFFECTIVEYIELDWAPRICE
+  // Контроль формулы: свой расчёт от цены выбранной биржевой пары (moexYPrice) против доходности той же пары (moexY) —
+  // like-for-like по цене; пару выбирает facts.ts по цепочке ISS (при useMoex это пара с показанной ценой)
   const ownCtl = ym.ownAtMoexPrice ?? ym.own;
   const controlDiff =
     ownCtl != null && b.moexY != null ? round2(Math.abs(ownCtl - b.moexY)) : null;
@@ -174,7 +175,7 @@ export function assembleReport(
       values,
       main_pct: ym.main == null ? null : round2(ym.main),
       period_income: periodIncome,
-      exchange: {
+      exchange: { // выбранная пара ISS (facts.ts moexPairs); pct = null, если биржа не опубликовала ни одной рассчитанной пары
         pct: b.moexY == null ? null : round2(b.moexY),
         price_pct: b.moexYPrice,
         datetype: b.moexYDatetype,

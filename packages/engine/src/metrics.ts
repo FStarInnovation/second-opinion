@@ -3,6 +3,8 @@
  * Время потоков и горизонтов — от даты расчётов (BondFacts.settleIso = SETTLEDATE №1), как у биржи:
  * свой расчёт от даты расчётов совпадает с EFFECTIVEYIELDWAPRICE (от todayIso расходился на 0,1–0,7 п.п.
  * у коротких бумаг, аудит 09.10.2026); «через N дней» для пользователя — по-прежнему от todayIso.
+ * Биржевая доходность — одна пара «доходность ↔ цена» из цепочки ISS (BondFacts.moexPairs, выбор в facts.ts); главная (useMoex)
+ * только когда цена пары совпадает с показанной (moexAtShownPrice), иначе main = own; ровно 0 от ISS = «не рассчитано».
  * Формулы и тексты — из сводной постановки, разделы «Метрики базового отчёта»
  * и «Red flags и Product Truth Score». Веса и пороги — в CONFIG.
  */
@@ -119,8 +121,9 @@ export interface YieldModel {
   scen: (number | null)[] | null;
   main: number | null;
   own: number | null;
-  /** Свой расчёт ОТ ЦЕНЫ БИРЖИ (moexYPrice) — для контроля формулы; own считается от показанной цены (WAPRICE/PREVWAPRICE),
-   *  а внутри дня они расходятся, и контроль ловил бы движение цены, а не ошибку расчёта (ЧеркизБ2P1 09.10: 1,06 п.п. при одинаковой формуле) */
+  /** Свой расчёт ОТ ЦЕНЫ ВЫБРАННОЙ БИРЖЕВОЙ ПАРЫ (moexYPrice) — контроль формулы like-for-like по цене; own считается от показанной
+   *  цены (WAPRICE/PREVWAPRICE), а внутри дня они расходятся, и контроль ловил бы движение цены, а не ошибку расчёта
+   *  (ЧеркизБ2P1 09.10: 1,06 п.п. при одинаковой формуле). Like-for-like по горизонту (биржа считает к коллу) — WP-F. */
   ownAtMoexPrice: number | null;
   useMoex: boolean;
   withComm: number | null;
@@ -158,9 +161,12 @@ export function yieldModel(
   } else {
     m.own = yieldOf(b, cleanPct, 0, 1, h);
     if (b.moexY != null && b.moexYPrice != null) m.ownAtMoexPrice = yieldOf(b, b.moexYPrice, 0, 1, h);
-    // Биржевую пару WAPRICE → EFFECTIVEYIELDWAPRICE используем как основную (вопрос 4);
-    // свой расчёт от той же цены — контроль (>0,5 п.п. — предупреждение)
-    m.useMoex = !m.priceFromUser && b.moexY != null && (b.fu === "SUR" || b.fu === "RUB");
+    // Биржевая доходность — главная (вопрос 4), но только из ОДНОЙ пары с показанной ценой: facts.ts выбирает по цепочке
+    // EFFECTIVEYIELDWAPRICE↔WAPRICE → YIELDATWAPRICE↔WAPRICE → YIELDATPREVWAPRICE↔PREVWAPRICE пару, чья цена == wap ?? prevWap
+    // (b.moexAtShownPrice). Пары к показанной цене нет (ISS не отдал доходность к ней) — main = own от показанной цены, а не
+    // биржевая доходность от другой (вчерашней) цены; биржевое число остаётся в exchange и в контроле. Цена от пользователя — own.
+    // Свой расчёт от цены той же пары (ownAtMoexPrice) — контроль (>0,5 п.п. — предупреждение).
+    m.useMoex = !m.priceFromUser && b.moexY != null && b.moexAtShownPrice && (b.fu === "SUR" || b.fu === "RUB");
     m.main = m.useMoex ? b.moexY : m.own;
   }
   if (k) m.withComm = yieldOf(b, cleanPct, k, 1, h);

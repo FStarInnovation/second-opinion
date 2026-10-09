@@ -135,7 +135,16 @@ export function facts(over: Partial<BondFacts> = {}): BondFacts {
     amortFuture: [], amortized: false,
     offerKind: "none", offerDateIso: null, offerPrice: null, offerPriceAssumedPar: false, reset: false,
     wap: 100, prevWap: 100, bid: 99.9, offerQ: 100.1, upd: "12:00:00", tradeDateIso: todayIso,
-    moexY: null, moexYPrice: null, moexYDatetype: null, g: 200, durDays: 650,
+    // WP-C: синтетика задаёт пару через over.moexY/moexYPrice — тогда она же и есть цепочка (инвариант BondFacts: moexY/moexYPrice
+    // = выбранная пара из moexPairs), а moexAtShownPrice считается по тому же правилу, что в facts.ts: показанная цена = wap ?? prevWap
+    // (с учётом over, а не базовых 100); явный over.moexPairs / over.moexAtShownPrice имеет приоритет (spread ниже)
+    moexPairs: over.moexY != null && over.moexYPrice != null
+      ? [{ y: over.moexY, price: over.moexYPrice, src: "marketdata_yields", datetype: over.moexYDatetype ?? null }]
+      : [],
+    moexY: null, moexYPrice: null, moexYDatetype: null,
+    moexAtShownPrice: over.moexY != null && over.moexYPrice != null
+      && Math.abs(over.moexYPrice - ((over.wap !== undefined ? over.wap : 100) ?? (over.prevWap !== undefined ? over.prevWap : 100) ?? 100)) <= 1e-6,
+    g: 200, durDays: 650,
     stop: false, structured: false, subordinated: false, perpetual: false, lvl: 2, qual: false, hasDefault: false,
     avg: 50_000_000, avgNT: 500, nDays: 20,
   };
