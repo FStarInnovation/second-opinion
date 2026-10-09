@@ -5,6 +5,10 @@
  * у коротких бумаг, аудит 09.10.2026); «через N дней» для пользователя — по-прежнему от todayIso.
  * Биржевая доходность — одна пара «доходность ↔ цена» из цепочки ISS (BondFacts.moexPairs, выбор в facts.ts); главная (useMoex)
  * только когда цена пары совпадает с показанной (moexAtShownPrice), иначе main = own; ровно 0 от ISS = «не рассчитано».
+ * Горизонт main — эффективный (WP-F): у колл-бумаги с фиксированным купоном это колл, когда биржевая доходность главная и биржа
+ * считает её к коллу (useMoex и YIELDDATETYPE=OFFER) или когда yield-to-worst заменил main на свою доходность к коллу; комиссия,
+ * налог, k_grid и подписи — к эффективному горизонту; контроль (ownAtMoexPrice) — к горизонту БИРЖИ (like-for-like), который
+ * совпадает с эффективным, когда биржевая доходность главная и считается к коллу. У флоатера горизонт сценариев и k_grid — погашение.
  * Формулы и тексты — из сводной постановки, разделы «Метрики базового отчёта»
  * и «Red flags и Product Truth Score». Веса и пороги — в CONFIG.
  */
@@ -45,6 +49,10 @@ export function shift(s: 1 | 2 | 3, t: number): number {
 /* ───── горизонт и потоки ───── */
 export interface Horizon { t: number; red: number; label: string; dateIso: string | null; kind: "maturity" | "offer" | "call" }
 
+/** БАЗОВЫЙ горизонт бумаги: put-оферта с датой или погашение. Колл сюда не входит намеренно: колл — право эмитента, и
+ *  горизонтом main он становится только по правилу эффективного горизонта в yieldModel (биржа считает к коллу или
+ *  yield-to-worst заменил main на call.y) — тогда yieldModel().h = горизонт колла (kind "call"), а horizon(b) остаётся
+ *  горизонтом «если колл не исполнят» (own, m.call.y сравнивается с ним). Put без даты — погашение (дата не раскрыта). */
 export function horizon(b: BondFacts): Horizon {
   // Горизонт — от даты расчётов, из той же даты, что и t купонов (купон в дату погашения тогда t == tMat и не выпадает).
   // Без MATDATE — DAYSTOREDEMPTION (дни от «сегодня» по МСК) за вычетом дней до расчётов.
@@ -113,6 +121,9 @@ export function afterTax(
 /* ───── модель доходности (2.3.3.1 + ветки) ───── */
 export interface YieldModel {
   status: "ok" | "noRate" | "noPrice" | "structured" | "perpetual";
+  /** Эффективный горизонт main: horizon(b) (погашение/put), либо колл — когда биржа считает к коллу (useMoex и YIELDDATETYPE=OFFER)
+   *  или когда main заменён call.y (yield-to-worst). К нему считаются withComm/afterTax здесь и k_grid/подписи в report.ts.
+   *  У флоатера остаётся horizon(b): три сценария отчёта считаются к погашению, и k_grid/комиссия должны совпадать с ними. */
   h: Horizon;
   cleanPct: number | null;
   priceFromUser: boolean;
@@ -120,10 +131,14 @@ export interface YieldModel {
   P: number | null;
   scen: (number | null)[] | null;
   main: number | null;
+  /** Свой расчёт к БАЗОВОМУ горизонту horizon(b) — погашение или put-оферта («если колл не исполнят»); к эффективному
+   *  горизонту h свой расчёт даёт k_grid[k=0] отчёта (при h = колл он равен call.y). */
   own: number | null;
-  /** Свой расчёт ОТ ЦЕНЫ ВЫБРАННОЙ БИРЖЕВОЙ ПАРЫ (moexYPrice) — контроль формулы like-for-like по цене; own считается от показанной
-   *  цены (WAPRICE/PREVWAPRICE), а внутри дня они расходятся, и контроль ловил бы движение цены, а не ошибку расчёта
-   *  (ЧеркизБ2P1 09.10: 1,06 п.п. при одинаковой формуле). Like-for-like по горизонту (биржа считает к коллу) — WP-F. */
+  /** Свой расчёт ОТ ЦЕНЫ ВЫБРАННОЙ БИРЖЕВОЙ ПАРЫ (moexYPrice) К ГОРИЗОНТУ БИРЖИ — контроль формулы like-for-like по цене и по
+   *  горизонту; own считается от показанной цены (WAPRICE/PREVWAPRICE), а внутри дня они расходятся, и контроль ловил бы движение
+   *  цены, а не ошибку расчёта (ЧеркизБ2P1 09.10: 1,06 п.п. при одинаковой формуле). Горизонт биржи: колл-бумагу с
+   *  YIELDDATETYPE=OFFER она считает к коллу (ТелХолБ2-6: own к погашению 16,32 vs биржа к коллу 17,22 — ложные 0,9 п.п.),
+   *  put — к оферте (это уже horizon(b)), иначе — к погашению. */
   ownAtMoexPrice: number | null;
   useMoex: boolean;
   withComm: number | null;
@@ -136,7 +151,18 @@ export function yieldModel(
   opts: { k?: number | null; userPrice?: number | null },
 ): YieldModel {
   const k = opts.k ?? 0;
-  const h = horizon(b);
+  const h = horizon(b); // базовый горизонт: погашение или put-оферта
+  // Горизонт колла — строится здесь, до контроля и комиссий/налога: он может стать эффективным горизонтом main (блок колла ниже)
+  // и горизонтом биржи для контроля like-for-like. t — от даты расчётов, как у купонов. hc.red = номинал × цена колла участвует
+  // ТОЛЬКО в m.call.gain (period_income): yieldOf/afterTax берут остаток через horizonRed(), которая для kind "call" цену колла
+  // (BUYBACKPRICE ≠ 100) и амортизацию в дату колла пока не учитывает — оба пункта A.4 (WP-A), здесь не чинится.
+  const hc: Horizon | null =
+    b.offerKind === "call" && b.offerDateIso
+      ? { t: yearsFrom(b.settleIso, b.offerDateIso), red: ((b.face ?? 0) * (b.offerPrice ?? 100)) / 100, label: "колла " + dmy(b.offerDateIso), dateIso: b.offerDateIso, kind: "call" }
+      : null;
+  // Горизонт биржи для выбранной пары: колл-бумагу с YIELDDATETYPE=OFFER биржа считает к коллу; put — к оферте (это уже h);
+  // при MATDATE (или без датотипа) — к погашению. Только датотип OFFER у колл-бумаги означает «к коллу».
+  const hMoex: Horizon = hc && b.moexYDatetype === "OFFER" ? hc : h;
   const cleanPct = opts.userPrice ?? b.wap ?? b.prevWap ?? null;
   const prevUsed = opts.userPrice == null && b.wap == null && b.prevWap != null;
   const m: YieldModel = {
@@ -160,7 +186,8 @@ export function yieldModel(
     m.own = m.scen[0];
   } else {
     m.own = yieldOf(b, cleanPct, 0, 1, h);
-    if (b.moexY != null && b.moexYPrice != null) m.ownAtMoexPrice = yieldOf(b, b.moexYPrice, 0, 1, h);
+    // Контроль like-for-like: та же цена (moexYPrice) и тот же горизонт (hMoex), что у биржевого числа
+    if (b.moexY != null && b.moexYPrice != null) m.ownAtMoexPrice = yieldOf(b, b.moexYPrice, 0, 1, hMoex);
     // Биржевая доходность — главная (вопрос 4), но только из ОДНОЙ пары с показанной ценой: facts.ts выбирает по цепочке
     // EFFECTIVEYIELDWAPRICE↔WAPRICE → YIELDATWAPRICE↔WAPRICE → YIELDATPREVWAPRICE↔PREVWAPRICE пару, чья цена == wap ?? prevWap
     // (b.moexAtShownPrice). Пары к показанной цене нет (ISS не отдал доходность к ней) — main = own от показанной цены, а не
@@ -169,22 +196,38 @@ export function yieldModel(
     m.useMoex = !m.priceFromUser && b.moexY != null && b.moexAtShownPrice && (b.fu === "SUR" || b.fu === "RUB");
     m.main = m.useMoex ? b.moexY : m.own;
   }
-  if (k) m.withComm = yieldOf(b, cleanPct, k, 1, h);
-  m.afterTax = afterTax(b, cleanPct, k, 1, h);
-
-  if (b.offerKind === "call" && b.offerDateIso) {
-    const tC = yearsFrom(b.settleIso, b.offerDateIso); // потоки — от даты расчётов
+  if (hc && b.offerDateIso) {
     const days = daysBetween(b.todayIso, b.offerDateIso); // «через N дней» — от сегодня, как флаг 8 и product.offer.days_to
-    const hc: Horizon = { t: tC, red: ((b.face ?? 0) * (b.offerPrice ?? 100)) / 100, label: "колла " + dmy(b.offerDateIso), dateIso: b.offerDateIso, kind: "call" };
-    const cps = couponFlows(b, tC, 1);
+    const cps = couponFlows(b, hc.t, 1); // потоки — от даты расчётов (hc.t)
     const recv = cps.reduce((s, c) => s + c[1], 0) + hc.red;
     const gain = recv - (m.P ?? 0);
     m.call = {
       days, dateIso: b.offerDateIso, gain, gainPct: (gain / (m.P ?? 1)) * 100,
       y: yieldOf(b, cleanPct, 0, 1, hc), short: days < CONFIG.flags.callSoonDays,
     };
-    if (!m.call.short && m.call.y != null && m.main != null) m.main = Math.min(m.main, m.call.y);
+    // Эффективный горизонт main (WP-F). Число main при этом не «переезжает» на другой горизонт — меняется только то,
+    // К ЧЕМУ оно подписано и к чему считаются комиссия/налог/k_grid:
+    //  (а) биржевая доходность главная и биржа считает к коллу (hMoex === hc, YIELDDATETYPE=OFFER) → main = moexY как есть,
+    //      горизонт — колл: число и раньше было к коллу, ошибочной была подпись «к погашению» (ТелХолБ2-6, аудит §F);
+    //  (б) иначе yield-to-worst: своя доходность к коллу ниже main → main = call.y и горизонт — колл (прежний min, теперь с горизонтом);
+    //  (в) иначе горизонт остаётся базовым h (погашение): к коллу выгоднее, эмитент его, скорее всего, не исполнит.
+    // Короткий колл (short, < callSoonDays) — ветка period_income в отчёте: горизонт остаётся базовым, подписи «к погашению».
+    // Биржевая доходность с YIELDDATETYPE=MATDATE у колл-бумаги горизонт не меняет — биржа считает её к погашению.
+    // Флоатер: число main = min(scen[0], call.y) — как до WP-F, но горизонт НЕ переключается: блок yield у флоатера — три сценария
+    // к погашению (report.ts, ветка scenarios), и k_grid/комиссия обязаны совпадать с заголовком «ставки не меняются», а не с
+    // call.y (ЧеркизБ2P2 при колле дальше callSoonDays: 17,19 в заголовке против 15,73 «без комиссии» — ревью WP-F).
+    // Правило (а) у флоатера не возникает: useMoex ставится только в ветке фиксированного купона.
+    if (!m.call.short) {
+      if (m.useMoex && hMoex === hc) m.h = hc;
+      else if (m.call.y != null && m.main != null && m.call.y < m.main) {
+        m.main = m.call.y;
+        if (b.ctype !== "float") m.h = hc;
+      }
+    }
   }
+  // Комиссия и налог — к эффективному горизонту m.h («одна величина — одно значение»: k_grid отчёта считается к тому же m.h)
+  if (k) m.withComm = yieldOf(b, cleanPct, k, 1, m.h);
+  m.afterTax = afterTax(b, cleanPct, k, 1, m.h);
   return m;
 }
 
@@ -278,7 +321,7 @@ export function flags(
     call ? (b.offerDateIso ? "CALLOPTIONDATE = " + dmy(b.offerDateIso) : "дата не раскрыта") : "нет");
   add(9, "Ставка после оферты неизвестна", "После оферты ставку купона назначит эмитент.",
     b.reset, C.resetPts,
-    b.reset ? `купоны после ${dmy(b.offerDateIso)} не объявлены` : "нет");
+    b.reset ? `купоны после ${b.offerDateIso ? dmy(b.offerDateIso) : "оферты"} не объявлены` : "нет");
   const fx = b.fu !== "SUR" && b.fu !== "RUB";
   add(10, "Валютный риск", "Номинал не в рублях — к риску облигации добавляется курсовой.",
     fx, C.fxPts, "FACEUNIT = " + b.fu);
@@ -349,7 +392,9 @@ export function worst(
     add("fx", "Курс валюты", worstFxText(pos));
   if (b.reset)
     add("reset", "Ставка после оферты",
-      `Если не предъявить бумагу к выкупу ${dmy(b.offerDateIso)}, дальше ставку назначит эмитент — она может быть ниже рынка.`);
+      b.offerDateIso
+        ? `Если не предъявить бумагу к выкупу ${dmy(b.offerDateIso)}, дальше ставку назначит эмитент — она может быть ниже рынка.`
+        : "Если не предъявить бумагу к выкупу в дату оферты, которую эмитент не раскрыл, дальше ставку назначит эмитент — она может быть ниже рынка.");
   return { list: W, d1, d3 };
 }
 
@@ -362,7 +407,10 @@ export function plainText(b: BondFacts): string {
   else c = "без купона — доход в разнице цены и номинала";
   let o: string;
   if (b.offerKind === "put")
-    o = `с офертой ${dmy(b.offerDateIso)}: в эту дату бумагу можно предъявить к выкупу по ${fmtMax(b.offerPrice ?? 100, 2)}%`;
+    // Дата оферты у put может быть не раскрыта (R2-14): тогда без слота даты и без «в эту дату»
+    o = b.offerDateIso
+      ? `с офертой ${dmy(b.offerDateIso)}: в эту дату бумагу можно предъявить к выкупу по ${fmtMax(b.offerPrice ?? 100, 2)}%`
+      : `с офертой (дата не раскрыта): бумагу можно предъявить к выкупу по ${fmtMax(b.offerPrice ?? 100, 2)}%`;
   else if (b.offerKind === "call")
     o = b.offerDateIso
       ? `эмитент может погасить досрочно ${dmy(b.offerDateIso)}`

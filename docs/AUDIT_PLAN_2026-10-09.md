@@ -41,6 +41,8 @@
 ### WP-F — горизонт «колл»
 **Изменение.** `horizon()` возвращает `kind:"call"` когда биржа считает к коллу (`moexYDatetype==="OFFER"` и `offerKind==="call"`) или когда `main` заменён `call.y` через `min`; `label/dateIso` — дата колла. Число **не менять** (yield-to-worst прав). `ownAtMoexPrice` считать к горизонту биржи → контроль like-for-like. `report.ts:88` подписи («к коллу DD.MM.YYYY», «удержании до колла …»). Put без даты — текст без «null».
 **Приёмка.** F.1 колл-бумага с `datetype OFFER` → `yield.horizon==="call"`, `horizon_date` = дата колла, label без «погашению»; F.2 `min(main, call.y)` → горизонт `call`; F.3 на колл-фикстуре `control_diff_pp ≤ 0,5`.
+**Выполнено 10.10.2026** (исполнитель + 2 ревью, 1 раунд правки, оба `accept`). Реализация: в `yieldModel` эффективный горизонт `m.h` — `hc` (колл), когда биржа считает к коллу (`useMoex` и `moexYDatetype==="OFFER"`) или когда `min(main, call.y)` заменил число у **фиксированного** купона; `withComm/afterTax/k_grid` — к `m.h`; контроль `ownAtMoexPrice` — к горизонту биржи (like-for-like по цене и горизонту); подписи «к коллу DD.MM.YYYY» / «удержании до колла …»; тексты put/колл без даты — без «null» («с офертой (дата не раскрыта)»). Факты: call_telhol — `horizon=call`, main 17,22 = биржа (OFFER), `k_grid[0]` 17,22 = `call.y`, `control_diff` 0,97 → 0,00 (независимый IRR к коллу от SETTLEDATE 17,22). Golden без изменений (в эталонах нет колл-бумаги с горизонтом call; cherk2p2 — короткий колл, period_income).
+**Решения и follow-up:** (а) **флоатер с коллом** дальше `callSoonDays`: горизонт не переключается (иначе `k_grid` «к коллу» при заголовке сценариев «к погашению»), но `main = min(scen[0], call.y)` как в HEAD — т.е. у флоатеров число main может быть к коллу при подписях к погашению; это существовавшая до WP-F несогласованность, вынести в WP-G/WP-T отдельным пунктом (F.5: фикстура `F_cherk2p2_early` = копия снимка cherk2p2 с `todayIso 2026-09-01`, утверждать `kind=scenarios`, `horizon=maturity`, `k_grid[0].pre === values[0].pct`); (б) на sfo_ast0 остаток расхождения own↔биржа к коллу (34,0 vs 15,74) — **A.4 удвоение остатка на колле**, не фантомные купоны (те объясняли расхождение к погашению) — уточнить формулировку A.4: `hc.red` = остаток × цена **и** `horizonRed()` для kind call должен учитывать цену колла и амортизацию в дату колла; (в) указатель в `facts.ts` «вырожденная оферта — WP-F» устарел: вырожденный горизонт `t ≤ 0` (оферта в дату расчётов или раньше) — отдельный пункт WP-G/R (R2-05).
 
 ### WP-D — гейт расхождения
 **Изменение.** `report.ts` после контроля: при `controlDiff > CONFIG.controlFailPp` — `kGrid=[]`, `fees_tax.pre/post=null`, из `panels` убрать `fees`, из `worst` убрать `call`; `yield.main/exchange` оставить; новое поле `yield.control_failed: boolean` + текст в `yield.line` («наш расчёт по графику выплат не сошёлся с биржевым — показываем только биржевую доходность»); `diagnostics.warnings` → `digest.ts`. `tools/validate/src/rules.ts:76` читать `CONFIG.controlFailPp`. Включать **после** B и F (иначе ложные срабатывания на колл-бумагах с премией).
@@ -78,7 +80,7 @@
 | 0 | Харнес RED, `baseline.json` записан | все проверки RED (кроме guard) |
 | 1 | WP-B ✅ 10.10.2026 | B.1–B.5 GREEN; control_diff на golden → 0 (факт) |
 | 2 | WP-C ✅ 10.10.2026 | C.1–C.3 GREEN (факт) |
-| 3 | WP-F | F.1–F.3 GREEN |
+| 3 | WP-F ✅ 10.10.2026 | F.1–F.4 GREEN (факт); golden без изменений |
 | 4 | WP-D (включить гейт) | D.1–D.3 GREEN; на AST0 fees/worst.call скрыты |
 | 5 | WP-A | A.1–A.4 GREEN; на AST0 гейт больше не срабатывает (own ≈ 15,5) |
 | 6 | WP-G | G.1–G.7 GREEN |
@@ -106,6 +108,7 @@
 
 **Обновление 10.10.2026 (после WP-B):** движок GREEN 9 (B.1–B.5 → GREEN) · RED 26 · SKIP 3 · ERROR 0; веб без изменений; `selftest` OK; baseline перезаписан.
 **После WP-C:** движок GREEN 11 (+C.1, C.2) · RED 24 · SKIP 3 · ERROR 0; веб без изменений; `selftest` OK; baseline перезаписан.
+**После WP-F:** движок GREEN 15 (+F.1–F.4) · RED 20 · SKIP 3 · ERROR 0; веб без изменений; `selftest` OK; golden без изменений; baseline перезаписан.
 
 `npm run audit` → exit 1 (есть RED — норма до правок); `npm run audit:engine -- --baseline` / `npm run audit:web -- --baseline` → exit 0 (не хуже базового). `tsc --noEmit` в обоих пакетах чист. Наполнение: 3 раунда «строитель → независимый проверяющий → ремонт» (46 + 16 агентов), все замечания закрыты или отклонены с обоснованием; оставшиеся границы — в разделе «Известные ограничения харнеса».
 

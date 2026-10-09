@@ -85,7 +85,8 @@ export function assembleReport(
     yLine = `Если ставки не изменятся — ${pctS(ym.scen[0])}, при снижении — ${pctS(ym.scen[1])}, если высокие дольше — ${pctS(ym.scen[2])}. Купон сейчас ≈ ${fmt(b.r0 ?? 0, 1)}% годовых.`;
   } else if (ym.main != null) {
     yKind = "single";
-    values.push({ label: "к " + h.label.replace(/^погашения/, "погашению").replace(/^оферты/, "оферте"), pct: round2(ym.main) });
+    // h — эффективный горизонт main (yieldModel().h): погашение, put-оферта или колл (WP-F) — подпись значения в дательном падеже
+    values.push({ label: "к " + h.label.replace(/^погашения/, "погашению").replace(/^оферты/, "оферте").replace(/^колла/, "коллу"), pct: round2(ym.main) });
     yLine = `${fmt(ym.main, 2)}% годовых — при покупке по ${fmt(ym.cleanPct ?? 0, 2)}% от номинала (${fmt(ym.P ?? 0, 2)} ${b.fu === "SUR" || b.fu === "RUB" ? "₽" : b.fu} с НКД) и удержании до ${h.label}. Купон — ${b.ctype === "fixed" ? fmtMax(b.cp ?? 0, 2) + "%" : "—"}.`;
     if (b.fu !== "SUR" && b.fu !== "RUB") yLine += ` Доходность в ${curWord(b.fu)}.`;
   }
