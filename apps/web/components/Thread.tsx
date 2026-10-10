@@ -36,7 +36,7 @@ const AssistantMessage: FC = () => (
   </MessagePrimitive.Root>
 );
 
-export const Thread: FC<{ status?: string; mock?: boolean }> = ({ status, mock }) => (
+export const Thread: FC<{ mock?: boolean }> = ({ mock }) => (
   <ThreadPrimitive.Root className="so-thread">
     <ThreadPrimitive.Viewport className="so-thread__viewport" autoScroll>
       <ThreadPrimitive.Empty>
@@ -45,7 +45,7 @@ export const Thread: FC<{ status?: string; mock?: boolean }> = ({ status, mock }
           <h1 className="so-h1">Назовите бумагу — соберу отчёт</h1>
           <p className="text">
             ISIN, название выпуска или эмитента. Можно сразу добавить сумму, комиссию брокера и что обещал продавец.
-            Числа считает движок по данным Мосбиржи; ассистент их объясняет, но не придумывает.
+            Числа — расчёт по данным Мосбиржи; ассистент их объясняет, но не придумывает.
           </p>
           <div className="so-thread__suggestions">
             {SUGGESTIONS.map((s) => (
@@ -74,7 +74,8 @@ export const Thread: FC<{ status?: string; mock?: boolean }> = ({ status, mock }
           </ThreadPrimitive.If>
         </ComposerPrimitive.Root>
         <p className="cap so-thread__disclaimer">Не является индивидуальной инвестиционной рекомендацией. Данные Мосбиржи с задержкой до 15 минут.</p>
-        {status && <p className={"cap so-thread__status" + (mock ? " so-thread__status--mock" : "")} data-status={mock ? "mock" : "live"}>{status}</p>}
+        {/* Без строки «модель · маршрутизация»: пользователю она не нужна; бейдж — только в режиме MOCK (разработка, ключей нет) */}
+        {mock && <p className="cap so-thread__mock" data-mode="mock">Режим MOCK — расход $0</p>}
       </ThreadPrimitive.ViewportFooter>
     </ThreadPrimitive.Viewport>
   </ThreadPrimitive.Root>

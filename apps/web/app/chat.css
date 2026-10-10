@@ -36,5 +36,4 @@
   .so-composer__send { margin-left: auto; }
 }
 
-.so-thread__status { margin: 4px 0 0; text-align: center; opacity: .7; }
-.so-thread__status--mock { color: var(--so-mid); opacity: 1; font-weight: 600; }
+.so-thread__mock { margin: 4px 0 0; text-align: center; color: var(--so-mid); font-weight: 600; }

@@ -155,3 +155,61 @@ html, body { margin: 0; background: var(--so-bg); }
   .score__n { font-size: 48px; }
   .btn { white-space: normal; text-align: center; }
 }
+
+/* главная (apps/web): hero → две карточки входа (проверка / ассистент) → «Что покажем» → FAQ «Как мы считаем» → подвал */
+.so-main.home { gap: 24px; padding-bottom: 32px; }
+.home__sub { font-size: 17px; color: var(--so-ink-2); text-wrap: pretty; }
+.home-card { gap: 14px; }
+/* ассистент — вторичный вход: тон фона даёт заметность, кнопка — контурная (заливная только у «Проверить») */
+.home-ask { background: var(--so-soft); border-color: #c9d6ea; }
+/* на десктопе форме — больше ширины; при SO_CHAT=0 в сетке один элемент и правило не срабатывает */
+@media (min-width: 961px) { .home-grid:has(> :nth-child(2)) { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); } }
+.home-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.home-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.home-row > .home-field { flex: 1 1 200px; }
+.home-row > .btn { flex: 0 0 auto; }
+.home-opt { font-weight: 400; color: var(--so-ink-4); }
+.home-examples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.home-examples .btn { height: auto; min-height: 32px; padding: 5px 10px; font-size: 13px; }
+.home-h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.home-sec { display: flex; flex-direction: column; gap: 12px; }
+/* «Что покажем»: на десктопе — одна полоса из 5 колонок с разделителями; уже — плитки */
+.home-features { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: var(--so-card); border: 1px solid var(--so-line-2); border-radius: 12px; }
+.home-features li { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; min-width: 0; }
+.home-features li + li { border-left: 1px solid var(--so-line-2); }
+.home-features b { font-size: 14px; font-weight: 600; }
+.home-features span { font-size: 13px; line-height: 1.45; color: var(--so-ink-3); }
+.faq { background: var(--so-card); border: 1px solid var(--so-line); border-radius: 14px; padding: 4px 24px; }
+.faq details + details { border-top: 1px solid var(--so-line-2); }
+.faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: 48px; padding: 12px 0; font-size: 15px; font-weight: 500; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: ""; flex: 0 0 auto; width: 8px; height: 8px; margin: -4px 4px 0 0; border-right: 2px solid var(--so-ink-3);
+  border-bottom: 2px solid var(--so-ink-3); transform: rotate(45deg); transition: transform .15s; }
+.faq details[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
+.faq summary:hover { color: var(--so-brand); }
+.faq summary:focus-visible { outline: 2px solid var(--so-brand); outline-offset: 2px; border-radius: 4px; }
+.faq__a { display: flex; flex-direction: column; gap: 8px; max-width: 780px; padding: 0 0 16px; font-size: 15px; color: var(--so-ink-2); text-wrap: pretty; }
+.faq__a ul { margin: 0; padding-left: 18px; }
+.faq__a li { break-inside: avoid; margin-bottom: 2px; }
+.faq__rules { columns: 2 300px; column-gap: 36px; }
+.faq__list li + li { margin-top: 6px; }
+.faq__list b { font-weight: 600; color: var(--so-ink); }
+.so-foot { margin-top: auto; background: var(--so-card); border-top: 1px solid var(--so-line-2); }
+.so-foot__in { max-width: 1120px; margin: 0 auto; padding: 16px 24px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 24px; }
+@media (prefers-reduced-motion: reduce) { .faq summary::after { transition: none; } }
+@media (max-width: 960px) {
+  .home-features { grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 10px; background: none; border: 0; }
+  .home-features li, .home-features li + li { background: var(--so-card); border: 1px solid var(--so-line-2); border-radius: 12px; }
+}
+@media (max-width: 640px) {
+  .so-main.home { gap: 20px; padding-bottom: 24px; }
+  .home__sub { font-size: 16px; }
+  .home-row > .btn { flex: 1 1 100%; }
+  .home-examples .btn { min-height: 40px; }
+  .home-features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-features li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .faq { padding: 4px 16px; }
+  .so-foot__in { padding: 14px 16px 20px; }
+}

@@ -189,7 +189,7 @@ export function FlagsScore({ r }: { r: R }) {
         <span className={"pill tone-" + tone} data-grade>{t.grade}</span>
       </div>
       {t.none_fired ? (
-        <p className="note note--good">Ни один из 13 red flags не сработал.</p>
+        <p className="note note--good">{`Ни один из ${r.flags.length} red flags не сработал.`}</p>
       ) : (
         <div>
           <span className="cap" style={{ display: "block", paddingBottom: 6 }}>Главные red flags</span>

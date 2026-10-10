@@ -35,7 +35,7 @@ packages/blocks   React-блоки реестра (чистые компонен
   src/styles.css      стиль v3: Geist, #353d64, белые карточки
 apps/static       Э2: SSG — страницы всех golden-кейсов, витрина блоков, манифест сборки
 tools/validate    Playwright-валидатор: 13 условий падения на 1280 и 390 px + проверка ввода; --selfcheck
-apps/web          Э3: Next.js — прямой путь без LLM (/, /check, /api/report) + ассистент (/chat, /api/chat); /api/health — провайдер и живость Jev (строка статуса под чатом)
+apps/web          Э3: Next.js — прямой путь без LLM (/, /check, /api/report) + ассистент (/chat, /api/chat); /api/health — провайдер и живость Jev (для e2e/аудита; в интерфейсе не показывается)
   lib/engine.ts       build() + кэш 15 мин + офлайн-режим на golden (SO_OFFLINE=1)
   lib/tools.ts        одобренный реестр инструментов: resolve_security, build_bond_report, set_inputs, explain_term
   lib/digest.ts       что видит модель (~600 токенов), а не контракт целиком
