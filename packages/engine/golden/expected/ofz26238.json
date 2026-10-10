@@ -3,7 +3,7 @@
   "report": {
     "schema": "bond_report@1",
     "product_type": "bond",
-    "built_at": "2026-10-09T21:43:18.724Z",
+    "built_at": "2026-10-10T12:19:48.924Z",
     "data_time": {
       "updatetime": "13:16:33",
       "trade_date": "2026-10-08",
@@ -69,6 +69,7 @@
       },
       "own_control_pct": 16.57,
       "control_diff_pp": 0,
+      "control_failed": false,
       "not_calculated_reason": null,
       "line": "16,57% годовых — при покупке по 50,44% от номинала (529,31 ₽ с НКД) и удержании до погашения 15.05.2041. Купон — 7,1%."
     },

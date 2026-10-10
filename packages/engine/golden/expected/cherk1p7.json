@@ -3,7 +3,7 @@
   "report": {
     "schema": "bond_report@1",
     "product_type": "bond",
-    "built_at": "2026-10-09T21:43:18.744Z",
+    "built_at": "2026-10-10T12:19:48.947Z",
     "data_time": {
       "updatetime": "13:17:00",
       "trade_date": "2026-10-08",
@@ -77,6 +77,7 @@
       },
       "own_control_pct": 16.19,
       "control_diff_pp": null,
+      "control_failed": false,
       "not_calculated_reason": null,
       "line": "Если ставки не изменятся — 16,19%, при снижении — 15,00%, если высокие дольше — 18,07%. Купон сейчас ≈ 15,4% годовых."
     },

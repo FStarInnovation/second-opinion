@@ -98,6 +98,21 @@ export function assembleReport(
     ownCtl != null && b.moexY != null ? round2(Math.abs(ownCtl - b.moexY)) : null;
   if (controlDiff != null && controlDiff > CONFIG.controlWarnPp)
     warnings.push(`контроль: свой расчёт ${pctS(ownCtl)} от цены биржи ${fmt(b.moexYPrice ?? 0, 2)}% отличается от биржевого ${pctS(b.moexY)} на ${fmt(controlDiff, 2)} п.п.`);
+  // Гейт расхождения (WP-D, аудит D / R2-01): yieldModel сравнил тот же контроль с CONFIG.controlFailPp. Биржевое число остаётся
+  // главным (оно верно), а всё производное от своего расчёта не публикуется: k_grid (→ fees_tax.pre/post = null, панели fees нет —
+  // composePanels), worst.call с own-числом (доходность к коллу / доход за период). Сигнал пользователю — фраза в yield.line,
+  // модели — diagnostics.warnings. При !useMoex (цена от пользователя, валютный выпуск, нет пары к показанной цене) главной остаётся
+  // own — фраза говорит только это: биржевая доходность может существовать (валюта; цена пользователя == биржевой) и остаётся
+  // в exchange, поэтому утверждать её отсутствие нельзя.
+  const gated = statusKind === "ok" && ym.controlFailed;
+  if (gated) {
+    yLine =
+      (yLine ? yLine + " " : "") +
+      (ym.useMoex
+        ? "Наш расчёт по графику выплат не сошёлся с биржевым — показываем только биржевую доходность."
+        : "Наш расчёт по графику выплат не сошёлся с биржевым — показана собственная доходность, контроль не пройден.");
+    warnings.push(`гейт контроля: расхождение ${fmt(controlDiff ?? 0, 2)} п.п. больше порога ${fmtMax(CONFIG.controlFailPp, 2)} п.п. — сетка комиссий, доходность после налога и доходность к коллу не рассчитаны`);
+  }
 
   /* строка цены */
   const prevUsed = userPrice == null && b.wap == null && b.prevWap != null;
@@ -110,9 +125,9 @@ export function assembleReport(
       (prevUsed ? " Цена — по вчерашней средневзвешенной." : "");
   }
 
-  /* комиссии и налог: сетка для клиентской интерполяции */
+  /* комиссии и налог: сетка для клиентской интерполяции; при гейте пуста — свой расчёт по графику выплат ненадёжен */
   const kGrid: [number, number | null, number | null][] =
-    statusKind === "ok" && ym.cleanPct != null
+    statusKind === "ok" && ym.cleanPct != null && !gated
       ? CONFIG.kGrid.map((kk) => {
           const pre = yieldOf(b, ym.cleanPct!, kk, 1, h);
           const post = afterTax(b, ym.cleanPct!, kk, 1, h);
@@ -184,6 +199,7 @@ export function assembleReport(
       },
       own_control_pct: ownCtl == null ? null : round2(ownCtl),
       control_diff_pp: controlDiff,
+      control_failed: gated,
       not_calculated_reason: notCalc,
       line: yLine,
     },
@@ -221,7 +237,10 @@ export function assembleReport(
       tax_note: "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
       line: "",
     },
-    worst: statusKind === "ok" ? W.list : [],
+    // при гейте без «call» с own-числом (ym.call задан: доходность к коллу call.y или доход за период по своему графику выплат);
+    // элемент call без даты (ym.call == null — «дата в данных биржи не раскрыта») own-числа не несёт и остаётся, как и
+    // rates/default/fx/reset — они от дюрации ISS, позиции и фактов бумаги
+    worst: statusKind === "ok" ? (gated ? W.list.filter((w) => !(w.id === "call" && ym.call != null)) : W.list) : [],
     flags: F.all,
     truth_score: {
       score: F.score,

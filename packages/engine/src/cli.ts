@@ -52,7 +52,7 @@ if (!has("quiet")) {
   console.log(`  Биржа: ${pctS(y.exchange.pct)} от ${y.exchange.price_pct ?? "—"}% (${y.exchange.datetype ?? "—"}) · свой контроль: ${pctS(y.own_control_pct)} · Δ ${y.control_diff_pp == null ? "—" : fmt(y.control_diff_pp, 2) + " п.п."}`);
   if (r.price.line) console.log(`  ${r.price.line}`);
   console.log(`  Ликвидность: ${r.liquidity.line}`);
-  console.log(`  Налог/комиссия: ${r.fees_tax.line}`);
+  console.log(`  Налог/комиссия: ${r.fees_tax.line ?? (r.yield.control_failed ? "— (гейт контроля: сетка комиссий не рассчитана)" : "— (не рассчитано)")}`);
   if (r.claim.line) console.log(`  ${r.claim.line}`);
   console.log(`  Truth Score: ${r.truth_score.score} — ${r.truth_score.grade}; флаги: ${r.flags.filter((f) => f.fired).map((f) => `#${f.id} ${f.title} (−${f.points})`).join("; ") || "нет"}`);
   console.log(`  Panels: ${r.panels.join(" → ")}`);

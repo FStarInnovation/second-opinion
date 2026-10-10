@@ -3,7 +3,7 @@
   "report": {
     "schema": "bond_report@1",
     "product_type": "bond",
-    "built_at": "2026-10-09T21:43:18.738Z",
+    "built_at": "2026-10-10T12:19:48.934Z",
     "data_time": {
       "updatetime": "13:16:00",
       "trade_date": "2026-10-08",
@@ -69,6 +69,7 @@
       },
       "own_control_pct": 9.62,
       "control_diff_pp": 0,
+      "control_failed": false,
       "not_calculated_reason": null,
       "line": "9,62% годовых — при покупке по 107,92% от номинала (1 102,81 ₽ с НКД) и удержании до оферты 26.08.2027. Купон — 19,15%."
     },

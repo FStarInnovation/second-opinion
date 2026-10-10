@@ -15,6 +15,8 @@ export function digestReport(r: BondReportT) {
     product: r.product.plain_text,
     yield_kind: r.yield.kind,
     yield_line: r.yield.kind === "not_calculated" ? r.yield.not_calculated_reason : r.yield.line,
+    // гейт controlFailPp (WP-D): свой расчёт не сошёлся с биржевым — комиссии/налог и колл не рассчитаны, показана только биржевая
+    control_failed: r.yield.control_failed,
     claim_line: r.claim.line,
     price_line: r.price.line,
     liquidity_line: r.liquidity.line,
@@ -22,6 +24,8 @@ export function digestReport(r: BondReportT) {
     worst: r.worst.map((w) => `${w.title}: ${w.text}`),
     truth_score: `${r.truth_score.score} — ${r.truth_score.grade}`,
     red_flags: fired.map((f) => `${f.title} (−${f.points})`),
+    // предупреждения движка целиком (контроль своего расчёта против биржевого, гейт) — модель должна их видеть, не пересчитывая
+    warnings: r.diagnostics.warnings,
     inputs: r.inputs,
     panels: r.panels,
     note: "Все числа уже показаны пользователю блоками отчёта. В тексте ответа числа не повторяй, ссылайся на блоки словами.",

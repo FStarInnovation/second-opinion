@@ -73,10 +73,13 @@ export function interpGrid(grid: [number, number | null, number | null][], k: nu
   return av + (bv - av) * t;
 }
 
-export function feesLine(grid: [number, number | null, number | null][], k: number | null) {
+export function feesLine(grid: [number, number | null, number | null][], k: number | null): { pre: number | null; post: number | null; line: string | null } {
+  // Пустая сетка — статус не ok (движок сетку не считал) или гейт controlFailPp (WP-D: свой расчёт по графику выплат ненадёжен):
+  // комиссии и налог не считаются и не показываются, line = null — панели fees нет (composePanels)
+  if (!grid.length) return { pre: null, post: null, line: null };
   const kk = k && k > 0 ? Math.min(k, CONFIG.kMax) : 0;
-  const pre = grid.length ? interpGrid(grid, kk, 1) : null;
-  const post = grid.length ? interpGrid(grid, kk, 2) : null;
+  const pre = interpGrid(grid, kk, 1);
+  const post = interpGrid(grid, kk, 2);
   const line = kk
     ? `С комиссией брокера ${fmtMax(kk, 2)}% при покупке доходность — ${pctS(pre)} до налога и ${pctS(post)} после.`
     : `Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: ${pctS(pre)} до налога по графику выплат и ${pctS(post)} после налога 13%.`;
@@ -97,7 +100,11 @@ export function composePanels(r: R): PanelIdT[] {
       if (r.price.line != null) p.push("price_line");
     }
     p.push("liquidity");
-    if (s === "ok") p.push("fees", "worst");
+    if (s === "ok") {
+      // fees — только при непустой сетке: при гейте controlFailPp (WP-D) движок её не публикует, карточки комиссий нет
+      if (r.fees_tax.k_grid.length > 0) p.push("fees");
+      p.push("worst");
+    }
     p.push("flags_score");
   }
   if (r.macro != null) p.push("macro");

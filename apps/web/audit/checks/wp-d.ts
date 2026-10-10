@@ -112,8 +112,10 @@ function ownNumbersOf(r: BondReportT): number[] {
   return [...new Set(out)];
 }
 const yieldOf = (r: BondReportT) => (r.yield as unknown as Record<string, unknown>);
-/** Строки digest.worst про колл (производное от own): по id-тексту «Досрочное погашение» или по слову «колл» */
-const callLines = (worst: string[]) => worst.filter((s) => /досрочн|колл/i.test(s));
+/** Строки digest.worst про колл (производное от own). Дайджест отдаёт worst как «${title}: ${text}» — сопоставляем
+ *  ТОЛЬКО по заголовку элемента (до первого «:»): текст других элементов легитимно упоминает колл как горизонт
+ *  («…держать до колла 25.01.2028…» в «Рост ставок» после WP-F — подпись горизонта биржи, не own-число). */
+const callLines = (worst: string[]) => worst.filter((s) => /досрочн|колл/i.test(s.split(":")[0] ?? ""));
 
 /* ───── фикстуры ───── */
 const liveReport = (name: string): BondReportT => {

@@ -3,7 +3,7 @@
   "report": {
     "schema": "bond_report@1",
     "product_type": "bond",
-    "built_at": "2026-10-09T21:43:18.752Z",
+    "built_at": "2026-10-10T12:19:48.980Z",
     "data_time": {
       "updatetime": "13:12:55",
       "trade_date": "2026-10-08",
@@ -74,6 +74,7 @@
       },
       "own_control_pct": 17.19,
       "control_diff_pp": null,
+      "control_failed": false,
       "not_calculated_reason": null,
       "line": "До колла 15.10.2026 — 7 дней: доход за период 2,43 ₽ на облигацию (0,24%). Годовая ставка на коротком сроке неустойчива; к погашению — 17,19%."
     },

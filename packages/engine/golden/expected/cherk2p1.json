@@ -3,7 +3,7 @@
   "report": {
     "schema": "bond_report@1",
     "product_type": "bond",
-    "built_at": "2026-10-09T21:43:18.758Z",
+    "built_at": "2026-10-10T12:19:48.993Z",
     "data_time": {
       "updatetime": "13:18:27",
       "trade_date": "2026-10-08",
@@ -69,6 +69,7 @@
       },
       "own_control_pct": 9.25,
       "control_diff_pp": 0,
+      "control_failed": false,
       "not_calculated_reason": null,
       "line": "9,25% годовых — при покупке по 100,80% от номинала (1 015,12 CNY с НКД) и удержании до погашения 14.03.2027. Купон — 10,8%. Доходность в юанях."
     },

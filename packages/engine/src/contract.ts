@@ -85,6 +85,10 @@ export const BondReport = z.object({
     }),
     own_control_pct: pct.nullable(),
     control_diff_pp: num.nullable(),
+    // гейт controlFailPp (WP-D): control_diff_pp > CONFIG.controlFailPp — свой расчёт по графику выплат не сошёлся с биржевым;
+    // главной остаётся биржевая (exchange.used_as_main; иначе own с пометкой в line), производное от own (k_grid, pre/post_tax,
+    // панель fees, worst.call с own-числом) не публикуется, в line — фраза «не сошёлся»
+    control_failed: z.boolean(),
     not_calculated_reason: z.string().nullable(),
     line: z.string().nullable(), // готовая фраза вывода доходности
   }),
@@ -123,7 +127,7 @@ export const BondReport = z.object({
     pre_tax_pct: pct.nullable(),
     post_tax_pct: pct.nullable(),
     tax_note: z.string(),
-    line: z.string(),
+    line: z.string().nullable(), // null — сетка пуста (статус не ok или гейт controlFailPp), панели fees нет
   }),
   worst: z.array(
     z.object({

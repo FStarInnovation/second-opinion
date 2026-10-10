@@ -9,6 +9,9 @@
  * считает её к коллу (useMoex и YIELDDATETYPE=OFFER) или когда yield-to-worst заменил main на свою доходность к коллу; комиссия,
  * налог, k_grid и подписи — к эффективному горизонту; контроль (ownAtMoexPrice) — к горизонту БИРЖИ (like-for-like), который
  * совпадает с эффективным, когда биржевая доходность главная и считается к коллу. У флоатера горизонт сценариев и k_grid — погашение.
+ * Гейт расхождения (WP-D, аудит D / R2-01): когда контроль расходится с биржей больше CONFIG.controlFailPp, свой расчёт по графику
+ * выплат ненадёжен — главной остаётся биржевая доходность (без yield-to-worst со своим расчётом к коллу), а всё производное от own
+ * (k_grid, комиссия/налог, сценарий колла) отчёт не публикует (report.ts по YieldModel.controlFailed).
  * Формулы и тексты — из сводной постановки, разделы «Метрики базового отчёта»
  * и «Red flags и Product Truth Score». Веса и пороги — в CONFIG.
  */
@@ -16,7 +19,7 @@ import type { BondFacts } from "./iss/facts";
 import { daysBetween, dmy, yearsFrom } from "./iss/facts";
 
 import { CONFIG, gradeOf } from "./config";
-import { curWord, daysWord, fmt, fmtMax, mln, pctS, round4, rub, termPhrase } from "./format";
+import { curWord, daysWord, fmt, fmtMax, mln, pctS, round2, round4, rub, termPhrase } from "./format";
 import { flag12, worstDefaultText, worstFxText, worstRatesText } from "./inputs";
 
 export { CONFIG } from "./config";
@@ -140,6 +143,18 @@ export interface YieldModel {
    *  YIELDDATETYPE=OFFER она считает к коллу (ТелХолБ2-6: own к погашению 16,32 vs биржа к коллу 17,22 — ложные 0,9 п.п.),
    *  put — к оферте (это уже horizon(b)), иначе — к погашению. */
   ownAtMoexPrice: number | null;
+  /** Гейт расхождения (WP-D): |ownAtMoexPrice − moexY| > CONFIG.controlFailPp — свой расчёт по графику выплат не сошёлся с биржевым
+   *  (фантомные купоны, удвоение остатка на колле — WP-A), доверять ему нельзя. Считается только там, где есть обе величины
+   *  (фиксированный купон и биржевая пара); сравнение — по round2, то же число, что report.ts публикует в control_diff_pp.
+   *  При ownAtMoexPrice == null (вырожденный горизонт колла t ≤ 0 → solve() null) гейт молчит СОЗНАТЕЛЬНО: сравнивать own к погашению
+   *  с биржей к коллу — не like-for-like; диагностика report.ts с фоллбэком `ownAtMoexPrice ?? own` в этом случае может показать
+   *  control_diff_pp > порога при controlFailed=false — валидатор пометит «гейт не сработал» (R2-05, план WP-F (е); здесь не чинится).
+   *  Следствия: при useMoex главной остаётся биржевая без замены на min(main, call.y), m.h = горизонт биржи; при !useMoex (цена от
+   *  пользователя, валютный выпуск, нет пары к показанной цене) main = own как и без гейта — включая yield-to-worst min(main, call.y),
+   *  то есть main может оказаться собственной доходностью к коллу (известное ограничение WP-D → WP-G/T). Производное от own (k_grid,
+   *  комиссия/налог, worst.call с датой — доходность к коллу или доход за период) при true отчёт не публикует; элемент call без даты
+   *  own-числа не несёт и остаётся. */
+  controlFailed: boolean;
   useMoex: boolean;
   withComm: number | null;
   afterTax: number | null;
@@ -167,7 +182,7 @@ export function yieldModel(
   const prevUsed = opts.userPrice == null && b.wap == null && b.prevWap != null;
   const m: YieldModel = {
     status: "ok", h, cleanPct, priceFromUser: opts.userPrice != null,
-    clean: null, P: null, scen: null, main: null, own: null, ownAtMoexPrice: null, useMoex: false,
+    clean: null, P: null, scen: null, main: null, own: null, ownAtMoexPrice: null, controlFailed: false, useMoex: false,
     withComm: null, afterTax: null, call: null,
   };
   void prevUsed;
@@ -188,6 +203,10 @@ export function yieldModel(
     m.own = yieldOf(b, cleanPct, 0, 1, h);
     // Контроль like-for-like: та же цена (moexYPrice) и тот же горизонт (hMoex), что у биржевого числа
     if (b.moexY != null && b.moexYPrice != null) m.ownAtMoexPrice = yieldOf(b, b.moexYPrice, 0, 1, hMoex);
+    // Гейт расхождения (WP-D): контроль не сошёлся с биржей больше controlFailPp — свой расчёт ненадёжен. То же округлённое число,
+    // что в report.ts (control_diff_pp), чтобы control_failed и диагностика не разошлись на границе порога.
+    const controlDiffPp = m.ownAtMoexPrice != null && b.moexY != null ? round2(Math.abs(m.ownAtMoexPrice - b.moexY)) : null;
+    m.controlFailed = controlDiffPp != null && controlDiffPp > CONFIG.controlFailPp;
     // Биржевая доходность — главная (вопрос 4), но только из ОДНОЙ пары с показанной ценой: facts.ts выбирает по цепочке
     // EFFECTIVEYIELDWAPRICE↔WAPRICE → YIELDATWAPRICE↔WAPRICE → YIELDATPREVWAPRICE↔PREVWAPRICE пару, чья цена == wap ?? prevWap
     // (b.moexAtShownPrice). Пары к показанной цене нет (ISS не отдал доходность к ней) — main = own от показанной цены, а не
@@ -217,8 +236,12 @@ export function yieldModel(
     // к погашению (report.ts, ветка scenarios), и k_grid/комиссия обязаны совпадать с заголовком «ставки не меняются», а не с
     // call.y (ЧеркизБ2P2 при колле дальше callSoonDays: 17,19 в заголовке против 15,73 «без комиссии» — ревью WP-F).
     // Правило (а) у флоатера не возникает: useMoex ставится только в ветке фиксированного купона.
+    // Гейт (WP-D): при controlFailed и useMoex свой расчёт к коллу (call.y) ненадёжен — main остаётся биржевой без правила (б),
+    // горизонт — горизонт биржи hMoex (колл при YIELDDATETYPE=OFFER, иначе погашение). При !useMoex main = own как и без гейта,
+    // включая правило (б): биржи к показанной цене в main нет, свой расчёт — единственный (его ненадёжность — в сигнале отчёта).
     if (!m.call.short) {
-      if (m.useMoex && hMoex === hc) m.h = hc;
+      if (m.controlFailed && m.useMoex) m.h = hMoex;
+      else if (m.useMoex && hMoex === hc) m.h = hc;
       else if (m.call.y != null && m.main != null && m.call.y < m.main) {
         m.main = m.call.y;
         if (b.ctype !== "float") m.h = hc;
