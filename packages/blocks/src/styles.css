@@ -208,6 +208,8 @@ html, body { margin: 0; background: var(--so-bg); }
   .home__sub { font-size: 16px; }
   .home-row > .btn { flex: 1 1 100%; }
   .home-examples .btn { min-height: 40px; }
+  /* на одной колонке «Открыть чат» не конкурирует с «Проверить» — делаем его заливным, чтобы не читался как второе поле */
+  .home-ask form .btn-outline { background: var(--so-brand); color: #fff; border-color: var(--so-brand); }
   .home-features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .home-features li:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .faq { padding: 4px 16px; }

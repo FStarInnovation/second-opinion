@@ -135,7 +135,8 @@ export async function runGate(
       if (!t) return pass();
       const out: ExplainResult = { found: true, id: t.id, title: t.title, text: t.text };
       writeTool(w, "explain_term", { term: text }, out);
-      writeText(w, `${t.title}. ${t.text}`);
+      // Текст термина уже в карточке инструмента — не повторяем его репликой (дубль на странице), только подсказка дальше
+      writeText(w, "Если нужно — спросите про другой термин или назовите бумагу, соберу отчёт.");
       return done();
     }
     case "out_of_scope": {
