@@ -84,7 +84,7 @@
 | 2 | WP-C ✅ 10.10.2026 | C.1–C.3 GREEN (факт) |
 | 3 | WP-F ✅ 10.10.2026 | F.1–F.4 GREEN (факт); golden без изменений |
 | 4 | WP-D ✅ 10.10.2026 | D.1–D.5 GREEN (факт); на AST0 / tb9a / veb_zero fees и worst.call (с own-числом) скрыты; golden: `control_failed:false` ×13 + `fees_tax.line→null` ×5 (статусы ≠ ok) |
-| 5 | WP-A | A.1–A.4 GREEN; на AST0 гейт больше не срабатывает (own ≈ 15,5) |
+| 5 | WP-A — **backlog** (решение Евгения 10.10.2026) | A.1–A.4 GREEN; на AST0 гейт больше не срабатывает (own ≈ 15,5). До выполнения: на ~100 выпусках TQCB гейт прячет fees/налог/колл; «после налога» занижено на амортизируемых; амортизируемые флоатеры и ввод цены — неверный заголовок без защиты гейта |
 | 6 | WP-G | G.1–G.7 GREEN |
 | 7 | WP-H, WP-R | H.*, R.* GREEN (LIVE — при `AUDIT_LIVE=1`) |
 | 8 | WP-S, WP-T | S.*, T.* GREEN; `npm run check` зелёный с новыми golden |
