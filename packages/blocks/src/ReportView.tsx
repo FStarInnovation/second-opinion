@@ -4,6 +4,7 @@
  * раскладывая их по сетке прототипа v3. Шаблон не содержит фактов о бумаге.
  * Один и тот же компонент — на статической странице (Э2) и в tool renderer чата (Э3), инвариант 4.
  */
+import type { ReactNode } from "react";
 import type { BondReportT, PanelIdT, ReportInputs } from "@so/engine/contract";
 import {
   AskPrice, Claim, DataLine, Fees, FlagsScore, InputsPanel, Liquidity, Macro, Plaque, PriceLine, Product, Worst, Yield,
@@ -23,6 +24,8 @@ export interface ReportViewProps {
   compact?: boolean;
   /** В чате ввод меняется репликами (set_inputs), панель ввода не показываем. */
   showInputs?: boolean;
+  /** Слот хоста между блоками отчёта и плашкой полного отчёта (Э3: «Обсудить с ассистентом»). */
+  beforePlaque?: ReactNode;
 }
 
 export const CABINET_HREF = "https://vfo.autremus.com";
@@ -75,6 +78,7 @@ export function ReportView(p: ReportViewProps) {
       ) : null}
 
       {has("macro") ? <Macro r={r} /> : null}
+      {p.beforePlaque ?? null}
       {has("plaque") ? <Plaque cabinetHref={p.cabinetHref ?? CABINET_HREF} /> : null}
 
       {!p.compact ? <p className="cap">Не является индивидуальной инвестиционной рекомендацией.</p> : null}

@@ -2,6 +2,7 @@
  * Прямой путь постановки: /check?q=…&promised=…&pos=…&k=… → build() на сервере → те же блоки, что в чате.
  * Ноль токенов. Ввод суммы / комиссии / «обещали» пересчитывается в браузере функцией движка;
  * цена предложения (ветка «нет цены») — пересборкой через /api/report.
+ * Под отчётом — «Обсудить с ассистентом» (/chat?q=…), только при включённом чате (фичефлаг SO_CHAT).
  */
 import type { Metadata } from "next";
 import { buildCached } from "@/lib/engine";
@@ -32,5 +33,5 @@ export default async function CheckPage({ searchParams }: { searchParams: Promis
         offer_price_pct: num(sp.price) ?? null,
       })
     : { kind: "err" as const, query: "", msg: "Укажите ISIN, название выпуска или ссылку на бумагу." };
-  return <CheckClient query={q} result={result} />;
+  return <CheckClient query={q} result={result} chatEnabled={process.env.SO_CHAT !== "0"} />;
 }

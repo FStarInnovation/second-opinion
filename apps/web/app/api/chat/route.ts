@@ -1,18 +1,20 @@
 /**
  * Маршрут чата. Порядок: лимит сообщений → Jev-гейт (уверенные реплики — инструмент без LLM)
  * → модель с одобренным реестром инструментов. Usage каждого вызова пишется в лог и в сессию.
+ * Поле тела inputs — вводы со страницы /check (переход «отчёт → ассистент»): к первому отчёту сессии.
  */
 import {
   convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, stepCountIs, streamText, type UIMessage,
 } from "ai";
 import { chatModel, isMock, provider, modelLabel, callProviderOptions } from "@/lib/model";
-import { makeTools } from "@/lib/tools";
+import { inputsSchema, makeTools } from "@/lib/tools";
 import { SYSTEM_PROMPT } from "@/lib/prompt";
 import { getSession, MESSAGE_LIMIT } from "@/lib/session";
 import { runGate } from "@/lib/gate";
 import { jevProvider } from "@/lib/jev";
 import { appendUsage, estimateCost } from "@/lib/usage-log";
 import { budgetState, countMessage, spend, BUDGET_EXHAUSTED_TEXT } from "@/lib/budget";
+import type { ReportInputs } from "@so/engine/contract";
 
 export const maxDuration = 60;
 
@@ -20,7 +22,7 @@ const textOf = (m: UIMessage | undefined) =>
   m ? m.parts.filter((p) => p.type === "text").map((p) => (p as { text: string }).text).join(" ").trim() : "";
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as { messages: UIMessage[]; id?: string };
+  const body = (await req.json()) as { messages: UIMessage[]; id?: string; inputs?: unknown };
   const messages = body.messages ?? [];
   const session = getSession(body.id ?? req.headers.get("x-so-chat") ?? "anon");
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -47,6 +49,13 @@ export async function POST(req: Request) {
     return plainReply(BUDGET_EXHAUSTED_TEXT);
   }
   countMessage();
+
+  // Вводы /check — недоверенный ввод: только схема set_inputs; невалидное игнорируется (не 400 — это не ошибка пользователя).
+  // Принимаются, пока отчёта в сессии нет; применяются один раз — при первой сборке отчёта (gate/tools → withPending)
+  if (session.result == null && body.inputs != null) {
+    const parsed = inputsSchema.partial().safeParse(body.inputs);
+    if (parsed.success && Object.keys(parsed.data).length) session.pendingInputs = parsed.data as ReportInputs;
+  }
 
   const tools = makeTools(session);
   const stream = createUIMessageStream({

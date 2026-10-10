@@ -9,7 +9,7 @@ import { fmtMax, rub } from "@so/engine/format";
 import { moneyIn, numbersIn, parsePromise, routeMessage, jevThreshold, type RouteDecision } from "./jev";
 import { buildCached, rebuild } from "./engine";
 import { findTerm } from "./glossary";
-import { setResult, type ChatSession } from "./session";
+import { setResult, withPending, type ChatSession } from "./session";
 import type { ReportToolResult, ExplainResult, ToolName } from "./tools";
 
 export interface GateOutcome {
@@ -80,9 +80,11 @@ export async function runGate(
         .replace(/^(проверь(те)?|проверить|посмотри(те)?|что скажешь (про|о|насчёт)|оцени(те)?|разбери)\s+/i, "")
         .replace(/[,;—-]?\s*(а\s+)?(мне\s+)?(обеща|говор|сулят|презентац).*$/i, "")
         .trim() || text.trim();
-      const out = await report(query, promised != null ? { promised_pct: promised } : {});
-      writeTool(w, promised != null ? "build_bond_report" : "resolve_security",
-        promised != null ? { query, inputs: { promised_pct: promised } } : { query }, out);
+      // Вводы со страницы /check (переход «отчёт → ассистент») — к первому отчёту сессии, «обещали» из текста реплики — поверх
+      const inputs = withPending(session, promised != null ? { promised_pct: promised } : {});
+      const out = await report(query, inputs);
+      const applied = Object.keys(inputs).length > 0;
+      writeTool(w, applied ? "build_bond_report" : "resolve_security", applied ? { query, inputs } : { query }, out);
       writeText(w, reportText(out.result));
       return done();
     }

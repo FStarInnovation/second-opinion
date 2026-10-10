@@ -9,7 +9,7 @@ import type { BuildResultT, ReportInputs } from "@so/engine/contract";
 import { buildCached, rebuild } from "./engine";
 import { digestResult } from "./digest";
 import { findTerm, GLOSSARY } from "./glossary";
-import { setResult, type ChatSession } from "./session";
+import { setResult, withPending, type ChatSession } from "./session";
 
 export const TOOL_NAMES = ["resolve_security", "build_bond_report", "set_inputs", "explain_term"] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -18,7 +18,8 @@ export type ToolName = (typeof TOOL_NAMES)[number];
 export type ReportToolResult = { query: string; result: BuildResultT };
 export type ExplainResult = { found: true; id: string; title: string; text: string } | { found: false; query: string; known: string[] };
 
-const inputsSchema = z.object({
+/** Ввод пользователя — единственная схема: инструмент set_inputs, поле inputs тела /api/chat и параметры /chat?q=… (переход с /check). */
+export const inputsSchema = z.object({
   position_size: z.number().int().min(1000).max(1e10).optional().describe("Сумма вложения в рублях"),
   k_pct: z.number().min(0).max(3).nullable().optional().describe("Комиссия брокера, % от суммы сделки; null — убрать"),
   promised_pct: z.number().min(0).max(100).nullable().optional().describe("Сколько пообещал продавец, % годовых; null — убрать"),
@@ -32,7 +33,8 @@ export function makeTools(session: ChatSession) {
       "Возвращает одну бумагу (и сразу её отчёт), список выпусков для выбора или «не найдена». Вызывай первым, когда пользователь называет бумагу.",
     inputSchema: z.object({ query: z.string().min(1).max(200).describe("Текст пользователя с идентификатором бумаги, как есть") }),
     execute: async ({ query }): Promise<ReportToolResult> => {
-      const result = await buildCached(query, {});
+      // вводы со страницы /check (если отчёта в сессии ещё нет) — тот же отчёт, что и на странице
+      const result = await buildCached(query, withPending(session));
       if (result.kind === "report") setResult(session, query, result);
       return { query, result };
     },
@@ -45,7 +47,7 @@ export function makeTools(session: ChatSession) {
       "query — идентификатор бумаги (ISIN/SECID/название). inputs — то, что сказал пользователь: сумма, комиссия брокера, «сколько обещали».",
     inputSchema: z.object({ query: z.string().min(1).max(200), inputs: inputsSchema.optional() }),
     execute: async ({ query, inputs }): Promise<ReportToolResult> => {
-      const result = await buildCached(query, (inputs ?? {}) as ReportInputs);
+      const result = await buildCached(query, withPending(session, (inputs ?? {}) as ReportInputs));
       if (result.kind === "report") setResult(session, query, result);
       return { query, result };
     },

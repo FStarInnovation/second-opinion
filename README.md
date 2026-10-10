@@ -60,7 +60,8 @@ npm run check           # всё сразу
 # Э3 — сайт и ассистент
 cp apps/web/.env.example apps/web/.env   # вписать OPENROUTER_API_KEY; без ключа — MOCK-режим
 npm run web:dev                          # http://localhost:3000 — форма, /check, /chat
-npm run e2e:chat                         # сценарии чата на запущенном сервере (SO_OFFLINE=1 MOCK_LLM=1)
+npm run e2e:chat                         # сценарии чата на запущенном MOCK-сервере (SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0); не-MOCK отвергается без --allow-live;
+                                         # нужны браузеры Playwright: npx playwright install chromium
 cd apps/web && npx tsx --env-file=.env scripts/jev-eval.ts --jev   # маршрутизатор на 50 фразах, живой Jev
 cd apps/web && npx tsx scripts/usage-report.ts                       # сколько потратили: журнал .usage/usage.jsonl
 
@@ -70,6 +71,15 @@ npx tsx src/cli.ts "RU000A1038V6" --out report.json     # контракт в ф
 ```
 
 Движку и страницам ключей не требуется (ISS открытый). Ассистенту нужен ключ в `apps/web/.env` — только там, никогда в чате и файлах репозитория: `OPENROUTER_API_KEY` (Haiku 5.5 + fallback GPT-6 Luna, и Jev через Decisions API) или `ANTHROPIC_API_KEY` (Claude API напрямую, Haiku 5.5 без fallback); Jev отдельно — `TYPESAFE_API_KEY` (прямой API TypeSafe, приоритетный) либо тот же OpenRouter-ключ; без ключа Jev — маршрутизация по правилам. Ключ, попавший в чат или коммит, считается скомпрометированным — его сразу отзывают и выпускают новый.
+
+**Э3 — сайт и ассистент: переход «отчёт → ассистент».** При включённом чате (`SO_CHAT` ≠ `0`) под блоками отчёта на `/check`
+(перед плашкой полного отчёта) — кнопка «Обсудить с ассистентом»: ссылка `/chat?q=<ISIN>&promised=…&pos=…&k=…&price=…` из
+актуальных вводов страницы (после пересчёта в браузере). `/chat` проверяет параметры схемой `inputsSchema` (`lib/tools.ts`, та же,
+что у `set_inputs`; невалидное отбрасывается) и сам отправляет первое сообщение «Проверь <q>, обещали N%». Сумма, комиссия и цена
+в текст не кладутся (одна реплика — одно намерение): они идут полем `inputs` тела `POST /api/chat`; сервер принимает его, пока в
+сессии нет отчёта (`session.pendingInputs`, невалидное — игнорируется, не 400), и применяет один раз — при первой сборке отчёта
+(гейт `check_security` или инструменты `resolve_security`/`build_bond_report`). Прямой путь `/check` по-прежнему без LLM; числа
+в чате — тот же `buildCached`/`applyInputs`, паритет проверяет `npm run e2e:chat` (сценарий 5). Без чата кнопки нет, `/chat` → 404.
 
 ## Тестовый стенд (heidi → https://40-160-87-140.sslip.io, позже mkt-second-opinion.ru)
 

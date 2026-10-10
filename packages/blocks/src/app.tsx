@@ -3,7 +3,7 @@
  * Корень страницы: шапка сайта + результат build(). Состояние ввода живёт здесь,
  * пересчёт — функцией движка applyInputs (та же, что на сервере; паритет проверяет selftest).
  */
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import type { BuildResultT, ReportInputs } from "@so/engine/contract";
 import { applyInputs } from "@so/engine/inputs";
 import { ReportView, CABINET_HREF } from "./ReportView";
@@ -33,6 +33,9 @@ export interface ResultAppProps {
   /** Есть сервер (Э3) — пересборка по цене предложения; нет — показываем пояснение. */
   rebuild?: (inputs: ReportInputs) => Promise<BuildResultT>;
   interactive?: boolean;
+  /** Под блоками отчёта (перед плашкой полного отчёта) — своё у хоста, напр. переход в чат (Э3).
+   *  Получает актуальный результат: вводы после пересчёта на странице живут здесь, не в URL. Только для kind="report". */
+  renderAfter?: (res: BuildResultT) => ReactNode;
 }
 
 export function ResultApp(p: ResultAppProps) {
@@ -56,6 +59,7 @@ export function ResultApp(p: ResultAppProps) {
           onAskPrice={onAskPrice}
           askPriceUnavailableNote="На демо-странице пересчёт по вашей цене недоступен: он делается движком на сервере (этап Э3)."
           newCheckHref={home}
+          beforePlaque={p.renderAfter?.(res)}
         />
       ) : res.kind === "pick" ? (
         <PickView res={res} hrefFor={p.hrefFor} newCheckHref={home} />

@@ -1,17 +1,29 @@
 /**
  * E2E ассистентного слоя (Э3) без ключей: сервер apps/web в режиме SO_OFFLINE=1 MOCK_LLM=1.
  * Проверяет критерий приёмки Э3: сценарии веток проходят в чате, а числа в чате тождественны странице
- * прямого пути (/check) и эталонам golden. Плюс отсутствие чисел о бумаге в тексте ассистента.
+ * прямого пути (/check) и эталонам golden. Плюс отсутствие чисел о бумаге в тексте ассистента
+ * и переход «отчёт → ассистент» (/check → /chat?q=…, поле inputs тела /api/chat).
  *   tsx src/e2e-chat.ts [--base http://localhost:3000] [--shots <dir>]
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium, type Page } from "playwright";
+import { CONFIG } from "@so/engine/config";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const arg = (k: string, d: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const BASE = arg("--base", "http://localhost:3000");
+// Защита от живого сервера (10.10.2026: запуск без --base ушёл в чужой `next dev` на :3000 с ключами и потратил
+// бюджет). Сценарии — только против MOCK; живой сервер — лишь с явным --allow-live.
+{
+  const h = (await fetch(`${BASE}/api/health`).then((r) => r.json()).catch(() => null)) as { mode?: string } | null;
+  if (!process.argv.includes("--allow-live") && h?.mode !== "mock") {
+    console.error(`e2e-chat: ${BASE} отвечает mode=${h?.mode ?? "нет ответа"} — не MOCK. Сценарии тратят бюджет живых ключей: ` +
+      "запустите сервер с SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0 (и --base на его порт) или передайте --allow-live.");
+    process.exit(2);
+  }
+}
 const SHOTS = path.resolve(arg("--shots", path.join(here, "../../../apps/web/.e2e-shots")));
 fs.mkdirSync(SHOTS, { recursive: true });
 const goldenDir = path.join(here, "../../../packages/engine/golden/expected");
@@ -38,6 +50,23 @@ async function send(page: Page, text: string) {
     tools: await last.locator("[data-tool]").evaluateAll((els) => els.map((e) => e.getAttribute("data-tool"))),
     block: (sel: string) => last.locator(sel),
   };
+}
+
+/** POST /api/chat как клиент AI SDK (id, messages с parts, inputs) → статус, вызовы инструментов и отчёт из UI-потока (SSE). */
+type ReportJson = { inputs: Record<string, unknown>; liquidity: { line: string }; yield: { main_pct: number | null } };
+async function chatApi(id: string, text: string, inputs?: unknown) {
+  const res = await fetch(BASE + "/api/chat", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      id, trigger: "submit-message", messages: [{ id: "u_" + id, role: "user", parts: [{ type: "text", text }] }],
+      ...(inputs !== undefined ? { inputs } : {}),
+    }),
+  });
+  const events = (await res.text()).split("\n").filter((l) => l.startsWith("data: {")).map((l) => JSON.parse(l.slice(6)));
+  const tools = events.filter((e) => e.type === "tool-input-available").map((e) => ({ name: e.toolName as string, input: e.input }));
+  const results = events.filter((e) => e.type === "tool-output-available").map((e) => e.output?.result);
+  const report = results.find((r) => r?.kind === "report")?.report as ReportJson | undefined;
+  return { status: res.status, tools, report };
 }
 
 /** Числа о бумаге в тексте ассистента: проценты и суммы, кроме введённых пользователем. */
@@ -134,6 +163,58 @@ r = await send(page, "привет, что купить чтобы разбог�
 ok("Не по теме: отказ без инструментов", r.tools.length === 0 && /только с проверкой облигаций/.test(r.text));
 r = await send(page, "RU000A10E2A5");
 ok("Не найдена: экран «Не нашли»", (await r.block("[data-block=notfound]").count()) === 1);
+
+/* ───── Сценарий 5: переход «отчёт → ассистент» — /check → /chat?q=…, вводы полем inputs тела /api/chat ───── */
+const sid = (n: string) => `e2e_c2c_${n}_${Date.now().toString(36)}`;
+const s1 = sid("a");
+let api = await chatApi(s1, "Проверь RU000A1038V6, обещали 15%", { position_size: 1_000_000, k_pct: 0.3 });
+const ai = api.report?.inputs;
+ok("inputs: отчёт собран с вводами /check (позиция, комиссия) и «обещали» из текста",
+  api.status === 200 && ai?.position_size === 1_000_000 && ai?.k_pct === 0.3 && ai?.promised_pct === 15, `${api.status} ${JSON.stringify(ai)}`);
+ok("inputs: строка ликвидности — на 1 000 000", /1 000 000/.test(norm(api.report?.liquidity.line ?? "")), api.report?.liquidity.line);
+ok("inputs: инструмент гейта показывает применённые вводы",
+  api.tools.some((t) => t.name === "build_bond_report" && (t.input as { inputs?: Record<string, unknown> }).inputs?.position_size === 1_000_000), JSON.stringify(api.tools));
+api = await chatApi(s1, "Проверь RU000A1038V6", { position_size: 5_000_000 });
+ok("inputs при уже собранном отчёте — игнорируются", api.status === 200 && api.report?.inputs.position_size === CONFIG.positionDefault,
+  JSON.stringify(api.report?.inputs));
+api = await chatApi(sid("b"), "Проверь RU000A1038V6", { position_size: "abc", k_pct: 0.3 });
+ok("невалидный inputs — игнорируется без 400", api.status === 200 && api.report?.inputs.position_size === CONFIG.positionDefault && api.report?.inputs.k_pct == null,
+  `${api.status} ${JSON.stringify(api.report?.inputs)}`);
+api = await chatApi(sid("c"), "Проверь RU000A105M67", { offer_price_pct: 98.5 });
+const npApi = (await (await fetch(`${BASE}/api/report?q=RU000A105M67&price=98.5`)).json()) as { report?: ReportJson };
+ok("price из /check: отчёт по цене предложения тот же, что на странице",
+  api.report?.inputs.offer_price_pct === 98.5 && api.report?.yield.main_pct != null && api.report?.yield.main_pct === npApi.report?.yield.main_pct,
+  `${api.report?.yield.main_pct} vs ${npApi.report?.yield.main_pct}`);
+
+// Браузер: ввод на /check → кнопка → /chat с автоотправкой, те же блоки
+await page.goto(BASE + "/check?q=RU000A1038V6");
+await page.waitForSelector("[data-block=chat_link] a");
+await page.click('[data-preset="1000000"]');
+await page.fill("#in-k", "0,3");
+await page.fill("#in-pr", "15");
+const chatLink = page.locator("[data-block=chat_link] a");
+const href = await chatLink.getAttribute("href");
+ok("/check: ссылка «Обсудить с ассистентом» несёт бумагу и актуальные вводы", href === "/chat?q=RU000A1038V6&promised=15&pos=1000000&k=0.3", String(href));
+const onCheck = Object.fromEntries(await Promise.all(["claim", "yield", "liquidity", "fees"].map(async (b) =>
+  [b, norm(await page.locator(`[data-block=${b}]`).innerText())] as const)));
+await chatLink.click();
+await page.waitForURL(/\/chat\?q=/);
+await page.waitForFunction(() => {
+  const last = [...document.querySelectorAll('[data-role="assistant"]')].pop();
+  return !!last && (last.querySelector(".so-msg__text")?.textContent ?? "").length > 0 && !last.querySelector(".so-tool--pending");
+}, undefined, { timeout: 20_000 });
+await page.waitForTimeout(300);
+const users = await page.locator('[data-role="user"]').allInnerTexts();
+ok("/chat: первое сообщение отправлено само и один раз", users.length === 1 && norm(users[0]) === "Проверь RU000A1038V6, обещали 15%", JSON.stringify(users));
+const reply = page.locator('[data-role="assistant"]').last();
+const inChat = Object.fromEntries(await Promise.all(["claim", "yield", "liquidity", "fees"].map(async (b) =>
+  [b, norm(await reply.locator(`[data-block=${b}]`).innerText())] as const)));
+ok("/chat: «При позиции 1 000 000 ₽» и «С комиссией брокера 0,3%»",
+  /При позиции 1 000 000 ₽/.test(inChat.liquidity) && /С комиссией брокера 0,3%/.test(inChat.fees), `${inChat.liquidity.slice(0, 60)} | ${inChat.fees.slice(0, 60)}`);
+const diff = Object.keys(onCheck).filter((b) => onCheck[b] !== inChat[b]);
+ok("Паритет /check ≡ /chat после перехода: «Обещали», доходность, ликвидность, комиссии", diff.length === 0,
+  diff.map((b) => `\n  ${b} чат:      ${inChat[b]}\n  ${b} страница: ${onCheck[b]}`).join(""));
+await page.screenshot({ path: path.join(SHOTS, "chat-from-check.png"), fullPage: true });
 
 /* ───── мобильная ширина: чат без горизонтального скролла ───── */
 await page.setViewportSize({ width: 390, height: 844 });
