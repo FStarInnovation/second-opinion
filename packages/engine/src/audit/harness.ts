@@ -21,8 +21,9 @@ import { checks as F } from "./checks/wp-f";
 import { checks as G } from "./checks/wp-g";
 import { checks as R } from "./checks/wp-r";
 import { checks as T } from "./checks/wp-t";
+import { checks as U } from "./checks/wp-u";
 
-const ALL: Check[] = [...A, ...B, ...C, ...D, ...F, ...G, ...R, ...T];
+const ALL: Check[] = [...A, ...B, ...C, ...D, ...F, ...G, ...R, ...T, ...U];
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const BASELINE = path.join(here, "baseline.json");

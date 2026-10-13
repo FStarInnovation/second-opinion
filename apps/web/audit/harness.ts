@@ -10,8 +10,10 @@ import { checks as H } from "./checks/wp-h";
 import { checks as D } from "./checks/wp-d";
 import { checks as R } from "./checks/wp-r";
 import { checks as S } from "./checks/wp-s";
+import { checks as UG } from "./checks/wp-u-gate";
+import { checks as UU } from "./checks/wp-u-ui";
 
-const ALL: Check[] = [...H, ...D, ...R, ...S];
+const ALL: Check[] = [...H, ...D, ...R, ...S, ...UG, ...UU];
 const here = path.dirname(fileURLToPath(import.meta.url));
 const BASELINE = path.join(here, "baseline.json");
 
