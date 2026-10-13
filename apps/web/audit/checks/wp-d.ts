@@ -14,6 +14,11 @@
  *        гейта (фраза плана в yield_line либо ключ control_failed=true); на чистом отчёте (warnings=[]) про контроль молчит.
  *        Сквозной путь без рукописной фикстуры: build(снимок ISS sfo_ast0, Δ 43,05) → digestReport — сегодня RED
  *        (в дайджесте нет ни «контрол», ни «не сошёл»), после D.1 + прокидывания warnings — GREEN на реальном выходе движка.
+ *        Правка WP-U (план 13.10, U.11): при СРАБОТАВШЕМ гейте предупреждения контроля целиком не требуются — сырые строки
+ *        несут ненадёжный собственный расчёт и жаргон, дайджест заменяет их одной фразой. Для таких отчётов пункт «целиком»
+ *        заменён пунктом gatedWarningsItem: прочие (не контрольные) предупреждения целиком, собственного расчёта
+ *        (yield.own_control_pct) в дайджесте нет; упоминание контроля, Δ и факт гейта по-прежнему требуют соседние пункты.
+ *        Без гейта (live_rolf_p26) пункт «целиком» прежний.
  *  D.5 (РАСШИРЕНИЕ плана: D.1 глазами модели; id D.5 в плане нет, WP-D = D.1–D.3) — при сработавшем гейте дайджест
  *        не отдаёт модели производное от собственного расчёта (fees_line с own-числами, доходность к коллу в worst),
  *        биржевую доходность оставляет; на нормальной бумаге fees_line на месте. RED обеспечивает сквозная секция
@@ -83,11 +88,31 @@ const failedClaims = (d: unknown) => [
 /** Строки diagnostics.warnings, которых в дайджесте нет целиком */
 const missingWarnings = (d: unknown, warnings: string[]) =>
   warnings.filter((w) => !strLeaves(d).some((l) => l.value.includes(w)));
+/** Предупреждения движка о контроле (report.ts): «контроль: свой расчёт …», «гейт контроля: …» */
+const CONTROL_WARNING = /^(контроль|гейт контроля)\s*:/i;
 /** Варианты записи числа: «58,88» (строки движка), 58.88 (JSON-число) */
 const variants = (x: number) => [...new Set([fmt(x, 2), x.toFixed(2), String(x)])];
 /** Число встречается в дайджесте (в любой форме, в любом листе) */
 const hasNumber = (d: unknown, x: number | null | undefined) =>
   x != null && leaves(d).some((l) => variants(x).some((v) => String(l.value).includes(v)));
+/** Число целиком, по границам: «5,10» не находится внутри «15,10» или «5,105» — для запрета own-числа без ложного RED */
+const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const hasWholeNumber = (d: unknown, x: number | null | undefined) =>
+  x != null && leaves(d).some((l) => variants(x).some((v) => new RegExp(`(?<![\\d.,])${escRe(v)}(?!\\d)`).test(String(l.value))));
+/**
+ * Пункт «предупреждения переданы» для отчёта со СРАБОТАВШИМ гейтом (правка WP-U, U.11): сырые предупреждения контроля
+ * целиком не требуются (в них собственный расчёт и жаргон «гейт», «сетка комиссий»), зато собственного расчёта
+ * yield.own_control_pct в дайджесте быть не должно; не контрольные предупреждения — целиком, как раньше
+ */
+function gatedWarningsItem(d: unknown, r: BondReportT): Item {
+  const ctl = r.diagnostics.warnings.filter((w) => CONTROL_WARNING.test(w));
+  const miss = missingWarnings(d, r.diagnostics.warnings.filter((w) => !CONTROL_WARNING.test(w)));
+  const own = r.yield.own_control_pct;
+  const ownIn = hasWholeNumber(d, own);
+  return it(miss.length === 0 && !ownIn,
+    `гейт сработал: предупреждения контроля (${ctl.length}) переданы своей формулировкой, собственный расчёт own_control_pct=${n2(own)} в дайджесте: ${ownIn ? "ЕСТЬ" : "нет"} (ожид. нет, U.11); ` +
+    `прочие предупреждения (${r.diagnostics.warnings.length - ctl.length}) переданы целиком${miss.length ? ` — не переданы ${miss.length}: ${miss.map((w) => q(w, 80)).join(", ")}` : ""}`);
+}
 /** Где в дайджесте ВНЕ диагностических строк встречаются own-числа: «путь=«значение» ← числа» */
 function ownHits(d: unknown, own: number[]): string[] {
   const hits: string[] = [];
@@ -185,7 +210,7 @@ export const checks: Check[] = [
     id: "D.2",
     wp: "D",
     kind: "fixture",
-    title: "Дайджест для модели передаёт предупреждение контроля (diagnostics.warnings) целиком и факт срабатывания гейта (фраза в yield_line / control_failed); на чистом отчёте молчит; сквозной путь build(sfo_ast0)→digest",
+    title: "Дайджест для модели передаёт предупреждение контроля (diagnostics.warnings целиком; при сработавшем гейте — своей фразой с Δ, без собственного расчёта) и факт срабатывания гейта (фраза в yield_line / control_failed); на чистом отчёте молчит; сквозной путь build(sfo_ast0)→digest",
     async run() {
       const sections: [string, Item[]][] = [];
 
@@ -216,8 +241,7 @@ export const checks: Check[] = [
         it(mGated.length > 0,
           `дайджест упоминает контроль: ${mGated.length ? mGated.map((l) => `${l.path}=${q(l.value, 90)}`).join(", ") : `нет — ключи дайджеста: ${Object.keys(dGated).join(",")}`}`),
         it(hasNumber(dGated, AST0.diff), `в дайджесте есть Δ=${fmt(AST0.diff, 2)} п.п.`),
-        it(missingWarnings(dGated, gated.diagnostics.warnings).length === 0,
-          `предупреждение ${q(AST0_WARNING, 60)} передано модели целиком`),
+        gatedWarningsItem(dGated, gated),
         it(fGated.length > 0,
           `дайджест передаёт факт срабатывания гейта (фраза «не сошёлся» в yield_line или ключ control_failed=true): ${fGated.length ? fGated.join(", ") : `нет — yield_line=${q(dGated.yield_line, 90)}`}`),
         it(controlMentions(viaResult).length > 0 && failedClaims(viaResult).length > 0,
@@ -249,8 +273,7 @@ export const checks: Check[] = [
         sections.push([`sfo_ast0 ${ast0.security.isin} build()→digest: Δ=${n2(d)} > ${CONFIG.controlFailPp}, гейт должен сработать`, [
           it(ctlWarns.length >= 1,
             `предусловие: движок пишет предупреждение контроля в diagnostics.warnings: ${q(ctlWarns[0] ?? "—")} (own_control=${n2(ast0.yield.own_control_pct)} vs биржа ${n2(ast0.yield.exchange.pct)}, datetype=${ast0.yield.exchange.datetype})`),
-          it(missA.length === 0,
-            `все diagnostics.warnings (${warns.length}) переданы модели целиком${missA.length ? ` — не переданы ${missA.length}: ${missA.map((w) => q(w, 80)).join(", ")}; строк со словом «контроль» в дайджесте: ${controlMentions(dAst0).length}` : ""}`),
+          gatedWarningsItem(dAst0, ast0),
           it(hasNumber(dAst0, d), `в дайджесте есть Δ=${n2(d)} п.п.`),
           it(fA.length > 0,
             `дайджест передаёт факт срабатывания гейта (фраза «не сошёлся» в yield_line или ключ control_failed=true): ${fA.length ? fA.join(", ") : `нет — yield_line=${q(dAst0.yield_line, 100)}, yield.control_failed=${String(yieldOf(ast0).control_failed)}`}`),

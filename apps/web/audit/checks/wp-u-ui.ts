@@ -7,7 +7,8 @@
  *                кнопки «Проверить» активны (PickView ставит disabled={!onPick}: активная кнопка = передан onPick).
  *  U.13 fixture  заголовки POST /api/chat (route.ts как функция, NODE_ENV=production, фиктивные ключи провайдеров,
  *                Jev-мок out_of_scope 1.0 — гейт закрывает реплику шаблоном, модель не вызывается).
- *  U.14 fixture  GET /api/health (как функция, Jev-мок): нет имени модели и бюджета.
+ *  U.14 fixture  GET /api/health (как функция, Jev-мок): запрос через Caddy (X-Forwarded-For клиента, внешний Host) и GET()
+ *                без запроса — нет имени модели и бюджета; запрос с самого сервера (deploy.sh, e2e на localhost) — есть mode.
  *  U.15 live     то же на проде, один GET /api/health.
  *  U.16 live     кэш отчётов общий для /check и /api/report на проде: built_at второго запроса = built_at первого.
  *  U.17 static   explain_term на LLM-пути: промпт требует пересказ найденной статьи И карточка рисуется на любом пути.
@@ -344,25 +345,59 @@ const U13: Check = {
   },
 };
 
+/**
+ * Запросы к /api/health в том виде, в каком их получает обработчик под `next start`. Внешний идёт через Caddy
+ * (deploy/heidi/setup.sh: reverse_proxy 127.0.0.1:3000 для домена и запасного входа по IP): Caddy ставит X-Forwarded-For =
+ * адрес клиента и передаёт внешний Host; Next (base-server.js) добавляет X-Forwarded-Host/Proto/Port, если их нет.
+ * Локальный — curl с самого сервера (deploy/heidi/deploy.sh) или e2e на localhost (tools/validate/src/e2e-chat.ts):
+ * X-Forwarded-For Next подставляет из адреса сокета (loopback), Host — loopback. GET() без запроса Next не вызывает —
+ * этот вариант остаётся как вход по умолчанию (подробностей быть не должно).
+ */
+const HEALTH_REQS: Array<{ name: string; outside: boolean; req: () => Request | undefined }> = [
+  { name: "GET() без запроса", outside: true, req: () => undefined },
+  { name: "через Caddy: домен", outside: true, req: () => new Request(`${PROD}/api/health`, { headers: {
+    host: "mkt-second-opinion.ru", "x-forwarded-for": "203.0.113.7", "x-forwarded-host": "mkt-second-opinion.ru", "x-forwarded-proto": "https", "x-forwarded-port": "3000" } }) },
+  { name: "через Caddy: вход по IP", outside: true, req: () => new Request("http://40.160.87.140/api/health", { headers: {
+    host: "40.160.87.140", "x-forwarded-for": "203.0.113.7", "x-forwarded-host": "40.160.87.140", "x-forwarded-proto": "http", "x-forwarded-port": "3000" } }) },
+  { name: "локально: deploy.sh", outside: false, req: () => new Request("http://127.0.0.1:3000/api/health", { headers: {
+    host: "127.0.0.1:3000", "x-forwarded-for": "127.0.0.1", "x-forwarded-host": "127.0.0.1:3000", "x-forwarded-proto": "http", "x-forwarded-port": "3000" } }) },
+  { name: "локально: e2e на localhost", outside: false, req: () => new Request("http://localhost:3000/api/health", { headers: {
+    host: "localhost:3000", "x-forwarded-for": "::1", "x-forwarded-host": "localhost:3000", "x-forwarded-proto": "http", "x-forwarded-port": "3000" } }) },
+];
+
 const U14: Check = {
   id: "U.14", wp: "U", kind: "fixture",
-  title: "/api/health наружу не раскрывает модель и бюджет (GET() как функция, Jev-мок)",
+  title: "/api/health наружу (запрос через Caddy, GET() без запроса) не раскрывает модель и бюджет; с самого сервера (deploy.sh, e2e) отдаёт mode (Jev-мок)",
   async run(): Promise<Verdict> {
     const health = await loadHealth();
     const rows: string[] = [];
     let ok = true;
     for (const v of PROD_VARIANTS) {
-      const mock = strictJev("check_security", "check_security");
-      const res = await withFetch(mock.fetch, () => withEnv({ ...SERVER_ENV(), ...v.env }, () => health.GET()));
-      const raw = await res.text();
-      let json: unknown = null;
-      try { json = JSON.parse(raw); } catch { /* не JSON */ }
-      if (json == null) { rows.push(`[${v.name}] status=${res.status}, не JSON: «${cut(raw, 80)}» — модели и бюджета нет`); continue; }
-      const ex = healthExposure(json);
-      if (ex.model.length || ex.budget.length) ok = false;
-      rows.push(`[${v.name}] status=${res.status}, ключи: ${ex.keys}; ${ex.line}; Jev-вызовов ${mock.seen.length}, неожиданных URL ${mock.unexpected.length}`);
+      for (const h of HEALTH_REQS) {
+        const mock = strictJev("check_security", "check_security");
+        const res = await withFetch(mock.fetch, () => withEnv({ ...SERVER_ENV(), ...v.env }, () => {
+          const req = h.req();
+          return req ? health.GET(req) : health.GET();
+        }));
+        const raw = await res.text();
+        let json: unknown = null;
+        try { json = JSON.parse(raw); } catch { /* не JSON */ }
+        const tag = `[${v.name} · ${h.name}] status=${res.status}`;
+        if (h.outside) {
+          if (json == null) { rows.push(`${tag}, не JSON: «${cut(raw, 80)}» — модели и бюджета нет`); continue; }
+          const ex = healthExposure(json);
+          if (ex.model.length || ex.budget.length) ok = false;
+          rows.push(`${tag}, ключи: ${ex.keys}; ${ex.line}; Jev-вызовов ${mock.seen.length}, неожиданных URL ${mock.unexpected.length}`);
+        } else {
+          // Контроль локального входа: deploy.sh и защита e2e (поле mode) должны продолжить работать — иначе «исправление»
+          // сводилось бы к тому, чтобы никому ничего не отдавать
+          const mode = (json as { mode?: unknown } | null)?.mode;
+          if (typeof mode !== "string") ok = false;
+          rows.push(`${tag}, mode=${show(mode ?? null)} (ожид. строка)${json == null ? `, не JSON: «${cut(raw, 80)}»` : ""}; Jev-вызовов ${mock.seen.length}`);
+        }
+      }
     }
-    const detail = `${rows.join(" | ")} | ожид.: нет поля model и подстрок haiku/claude/sonnet/gpt, нет budget/spent/limit`;
+    const detail = `${rows.join(" | ")} | ожид.: снаружи — нет поля model и подстрок haiku/claude/sonnet/gpt, нет budget/spent/limit; локально — есть mode`;
     return ok ? pass(detail) : fail(detail);
   },
 };

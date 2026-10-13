@@ -11,14 +11,32 @@
  */
 import type { BondReportT, PanelIdT, ReportInputs } from "./contract";
 import { CONFIG, gradeOf } from "./config";
-import { daysWord, fmt, fmtMax, pctS, round2, rub } from "./format";
+import { daysWord, fmt, fmtMax, mln, pctS, round2, rub } from "./format";
 
 type R = BondReportT;
+type LiqCategory = BondReportT["liquidity"]["category"];
 
 /* ───── тексты, зависящие от ввода (единственный источник) ───── */
 
+/** Позиция больше среднего дневного оборота: за день её не продать, полуспред — цена выхода только для части позиции (U.21) */
+export const positionAboveTurnover = (avg: number | null, pos: number): boolean => avg != null && avg > 0 && pos > avg;
+
+/**
+ * Категория ликвидности (2.3.3.2) — единственная реализация: её зовут и metrics.liquidity (сборка), и applyInputs (смена
+ * суммы на странице и в чате). Считается заново от оборота и позиции, а не от прошлой категории, — поэтому при обратной
+ * смене суммы (50 млн → 500 тыс.) категория возвращается.
+ *   не торгуется — «—»; сделок нет или оборот меньше midTurnover — «низкая»; позиция больше среднего дневного оборота —
+ *   «низкая»; оборот больше goodTurnover — «норм»; иначе — «умеренно».
+ */
+export function liquidityCategory(traded: boolean, avg: number | null, pos: number): LiqCategory {
+  if (!traded) return "—";
+  if (avg == null || avg < CONFIG.liq.midTurnover) return "низкая"; // нет сделок в окне — тоже «низкая», а не «неизвестно»
+  if (positionAboveTurnover(avg, pos)) return "низкая";
+  return avg > CONFIG.liq.goodTurnover ? "норм" : "умеренно";
+}
+
 export function liquidityLine(r: R, pos: number): {
-  share_pct: number | null; exit_now_money: number | null; exit_days: number | null; line: string;
+  share_pct: number | null; exit_now_money: number | null; exit_days: number | null; category: LiqCategory; line: string;
 } {
   const L = r.liquidity;
   const avg = L.avg_turnover;
@@ -26,18 +44,24 @@ export function liquidityLine(r: R, pos: number): {
   const share = avg && avg > 0 ? round2((pos / avg) * 100) : null;
   const exitDays = avg && avg > 0 ? Math.max(1, Math.ceil(pos / (avg * CONFIG.liq.dayShare))) : null;
   const exitMoney = exitPct == null ? null : Math.round((pos * exitPct) / 100);
+  const category = liquidityCategory(L.traded, avg, pos);
   let line: string;
   if (!L.traded) line = "Биржевых торгов по бумаге нет — выйти через биржу нельзя.";
   else if (!avg)
     line = L.days_counted
       ? `За последние ${L.days_counted} торговых дней по бумаге не было сделок — выйти через биржу сейчас нельзя. Категория ликвидности — низкая.`
       : `За последние ${CONFIG.liq.windowDays} дней по бумаге не было ни одной сделки — выйти через биржу сейчас нельзя. Категория ликвидности — низкая.`;
+  else if (positionAboveTurnover(avg, pos))
+    // Полуспред — цена выхода только для объёма, который стакан примет сразу; ценой выхода всей позиции его не называем
+    line =
+      `Позиция ${rub(pos)} больше среднего дневного оборота по бумаге (${mln(avg)}) — быстро продать её целиком без скидки нельзя. ` +
+      `Аккуратный выход ≈ ${daysWord(exitDays!)}. Категория ликвидности — ${category}.`;
   else
     line =
       `При позиции ${rub(pos)} стоимость моментального выхода ≈ ` +
       (exitPct == null ? "не определить: в стакане нет встречных заявок" : fmt(exitPct, 2) + "%") +
-      `, аккуратного выхода ≈ ${daysWord(exitDays!)}. Категория ликвидности — ${L.category}.`;
-  return { share_pct: share, exit_now_money: exitMoney, exit_days: exitDays, line };
+      `, аккуратного выхода ≈ ${daysWord(exitDays!)}. Категория ликвидности — ${category}.`;
+  return { share_pct: share, exit_now_money: exitMoney, exit_days: exitDays, category, line };
 }
 
 export const worstRatesText = (d1: number, d3: number, pos: number, horizonLabel: string) =>
@@ -126,6 +150,7 @@ export function applyInputs(base: R, inputs: ReportInputs): R {
   r.liquidity.share_pct = L.share_pct;
   r.liquidity.exit_now_money = L.exit_now_money;
   r.liquidity.exit_days = L.exit_days;
+  r.liquidity.category = L.category; // от позиции: больше дневного оборота — «низкая» (U.21); при обратной смене — снова по обороту
   r.liquidity.line = L.line;
 
   /* комиссии и налог */

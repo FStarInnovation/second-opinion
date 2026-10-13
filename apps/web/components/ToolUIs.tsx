@@ -3,12 +3,26 @@
  * Tool UI чата: результат каждого инструмента рисуется ТЕМИ ЖЕ блоками, что и страница (инвариант 4).
  * Регистрируются через MessagePrimitive.Parts components.tools.by_name (современная замена makeAssistantToolUI).
  */
-import type { ToolCallMessagePartProps } from "@assistant-ui/react";
+import { useAui, useAuiState, type ToolCallMessagePartProps } from "@assistant-ui/react";
+import type { BuildResultT } from "@so/engine/contract";
 import { ReportView, PickView, NotFoundView, ErrView } from "@so/blocks";
 import type { ReportToolResult, ExplainResult } from "@/lib/tools";
 
 function Pending({ label }: { label: string }) {
   return <div className="so-tool so-tool--pending" role="status"><span className="so-dot" />{label}</div>;
+}
+
+/** Выбор выпуска в чате: реплика «Проверь <ISIN>» уходит в тот же диалог (как автоотправка в ChatApp), без перехода на /check —
+ *  сумма и комиссия сессии не теряются. Пока ассистент отвечает, кнопки неактивны: второй клик не шлёт вторую реплику. */
+function ChatPick({ res }: { res: Extract<BuildResultT, { kind: "pick" }> }) {
+  const aui = useAui();
+  const busy = useAuiState((s) => s.thread.isRunning || s.thread.isDisabled);
+  const pick = (secid: string) => {
+    if (aui.thread.getState().isRunning) return;
+    const c = res.candidates.find((x) => x.secid === secid);
+    aui.thread.append({ role: "user", content: [{ type: "text", text: `Проверь ${c?.isin ?? secid}` }] });
+  };
+  return <PickView res={res} onPick={busy ? undefined : pick} compact />;
 }
 
 export function ReportToolUI(p: ToolCallMessagePartProps<Record<string, unknown>, ReportToolResult | { error: string }>) {
@@ -20,11 +34,11 @@ export function ReportToolUI(p: ToolCallMessagePartProps<Record<string, unknown>
       {res.kind === "report" ? (
         <ReportView report={res.report} compact showInputs={false} askPriceUnavailableNote="Напишите цену предложения в чате — пересчитаю." />
       ) : res.kind === "pick" ? (
-        <PickView res={res} hrefFor={(secid) => `/check?q=${encodeURIComponent(secid)}`} />
+        <ChatPick res={res} />
       ) : res.kind === "notfound" ? (
-        <NotFoundView res={res} newCheckHref="/" />
+        <NotFoundView res={res} compact />
       ) : (
-        <ErrView res={res} newCheckHref="/" />
+        <ErrView res={res} compact />
       )}
     </div>
   );
@@ -32,8 +46,8 @@ export function ReportToolUI(p: ToolCallMessagePartProps<Record<string, unknown>
 
 export function ExplainToolUI(p: ToolCallMessagePartProps<{ term: string }, ExplainResult>) {
   if (p.status.type === "running" || p.result === undefined) return <Pending label="Ищу в глоссарии…" />;
-  if (!p.result.found)
-    return <p className="note">В глоссарии нет такого термина. Есть: {p.result.known.slice(0, 6).join(", ")}…</p>;
+  // Статьи нет — карточку не рисуем: отвечает модель своими словами, тупик «нет такого термина» рядом с ответом не нужен
+  if (!p.result.found) return null;
   return (
     <section className="card so-tool so-tool--term" data-tool="explain_term" data-term={p.result.id}>
       <h2>{p.result.title}</h2>

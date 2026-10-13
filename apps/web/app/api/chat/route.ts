@@ -12,7 +12,7 @@ import { SYSTEM_PROMPT } from "@/lib/prompt";
 import { getSession, MESSAGE_LIMIT } from "@/lib/session";
 import { runGate } from "@/lib/gate";
 import { jevProvider } from "@/lib/jev";
-import { appendUsage, estimateCost } from "@/lib/usage-log";
+import { appendUsage, estimateCost, ANSWER_LOG_CHARS, USER_TEXT_LOG_CHARS } from "@/lib/usage-log";
 import { budgetState, countMessage, spend, BUDGET_EXHAUSTED_TEXT } from "@/lib/budget";
 import type { ReportInputs } from "@so/engine/contract";
 
@@ -58,6 +58,7 @@ export async function POST(req: Request) {
   }
 
   const tools = makeTools(session);
+  let answeredBy: "gate" | "model" | null = null; // кто отвечал на реплику — для записи answer в журнале
   const stream = createUIMessageStream({
     originalMessages: messages,
     execute: async ({ writer }) => {
@@ -66,15 +67,19 @@ export async function POST(req: Request) {
       const jevIn = gate.decision?.usage?.inputTokens;
       if (gate.decision?.source === "jev") spend(gate.decision.usage?.cost ?? estimateCost("jev", jevIn ?? 0) ?? 0);
       log({
-        chat: session.id, step: "gate", text: text.slice(0, 80),
+        chat: session.id, step: "gate", text: text.slice(0, USER_TEXT_LOG_CHARS),
         ...(gate.decision ? { intent: gate.decision.intent, confidence: gate.decision.confidence, source: gate.decision.source } : {}),
         handled: gate.handled,
         ...(gate.decision?.source === "jev" ? { jev_in: jevIn, jev_cost: gate.decision.usage?.cost ?? estimateCost("jev", jevIn ?? 0) } : {}),
         ...(gate.decision?.jevError ? { jev_error: gate.decision.jevError } : {}),
       });
-      if (gate.handled) return;
+      if (gate.handled) {
+        answeredBy = "gate";
+        return;
+      }
 
       /* 2. Модель с инструментами */
+      answeredBy = "model";
       // Системный промпт с cache-breakpoint (ai 7: instructions вместо system): Claude API кэширует префикс
       // «инструменты + система» (~2,7k токенов), повторные вызовы платят за него 10%. OpenRouter/mock ключ игнорируют.
       const result = streamText({
@@ -111,11 +116,27 @@ export async function POST(req: Request) {
       log({ step: "error", error: String(e).slice(0, 300) });
       return "Не получилось ответить — попробуйте ещё раз или переформулируйте запрос.";
     },
+    // Что увидел пользователь — и от гейта, и от модели: начало текста ответа и имена инструментов. Ключей и заголовков здесь нет;
+    // в тексте ответа бывают сумма и комиссия пользователя и повтор его запроса (см. шапку lib/usage-log.ts)
+    onEnd: ({ responseMessage, isAborted }) => {
+      log({ chat: session.id, step: "answer", by: answeredBy ?? "none", ...answerOf(responseMessage), ...(isAborted ? { aborted: true } : {}) });
+    },
   });
-  return createUIMessageStreamResponse({
-    stream,
-    headers: { "x-so-mode": isMock() ? "mock" : provider(), "x-so-jev": jevProvider() ?? "rules" },
-  });
+  // Диагностические заголовки — только при разработке и в MOCK: на проде имена провайдеров наружу не уходят
+  const headers: Record<string, string> =
+    process.env.NODE_ENV !== "production" ? { "x-so-mode": isMock() ? "mock" : provider(), "x-so-jev": jevProvider() ?? "rules" }
+    : isMock() ? { "x-so-mode": "mock" }
+    : {};
+  return createUIMessageStreamResponse({ stream, headers });
+}
+
+/** Ответ ассистента для журнала: текст подряд (первые ANSWER_LOG_CHARS символов) и инструменты в порядке вызова */
+function answerOf(m: UIMessage | undefined): { text: string; tools: string[] } {
+  const parts = m?.parts ?? [];
+  const text = parts.filter((p) => p.type === "text").map((p) => (p as { text: string }).text).join(" ").replace(/\s+/g, " ").trim();
+  const tools = parts.flatMap((p) =>
+    p.type === "dynamic-tool" ? [(p as { toolName: string }).toolName] : p.type.startsWith("tool-") ? [p.type.slice("tool-".length)] : []);
+  return { text: text.slice(0, ANSWER_LOG_CHARS), tools };
 }
 
 function log(rec: Record<string, unknown>) {

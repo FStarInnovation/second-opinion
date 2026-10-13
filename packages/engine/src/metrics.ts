@@ -20,7 +20,7 @@ import { daysBetween, dmy, yearsFrom } from "./iss/facts";
 
 import { CONFIG, gradeOf } from "./config";
 import { curWord, daysWord, fmt, fmtMax, mln, pctS, round2, round4, rub, termPhrase } from "./format";
-import { flag12, worstDefaultText, worstFxText, worstRatesText } from "./inputs";
+import { flag12, liquidityCategory, worstDefaultText, worstFxText, worstRatesText } from "./inputs";
 
 export { CONFIG } from "./config";
 export { curWord, daysWord, fmt, fmtMax, mln, pctS, rub, termPhrase } from "./format";
@@ -270,10 +270,9 @@ export function liquidity(b: BondFacts, pos: number): Liquidity {
   const spread = !missing && denom ? ((b.offerQ! - b.bid!) / denom) * 100 : null;
   let share: number | null = null, days: number | null = null;
   if (avg && avg > 0) { share = (pos / avg) * 100; days = pos / (avg * CONFIG.liq.dayShare); }
-  const cat: Liquidity["cat"] =
-    b.stop ? "—" // не торгуется — категории нет
-    : avg == null || avg < CONFIG.liq.midTurnover ? "низкая" // нет сделок в окне — тоже «низкая», а не «неизвестно»
-    : avg > CONFIG.liq.goodTurnover ? "норм" : "умеренно";
+  // Категория — от оборота и позиции (U.21: позиция больше среднего дневного оборота — «низкая»): та же функция, что в applyInputs,
+  // от того же оборота, что попадает в контракт (avg_turnover округлён до рубля), — сборка и пересчёт на странице совпадают
+  const cat: Liquidity["cat"] = liquidityCategory(!b.stop, avg == null ? null : Math.round(avg), pos);
   const exitPct = spread == null ? null : spread / 2;
   const exitDays = days == null ? null : Math.max(1, Math.ceil(days));
   const noExit = b.stop || avg === 0;

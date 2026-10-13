@@ -13,16 +13,19 @@ type Err = Extract<BuildResultT, { kind: "err" }>;
 const variantWord = (n: number) =>
   n % 10 === 1 && n % 100 !== 11 ? "выпуск" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "выпуска" : "выпусков";
 
-export function PickView({ res, hrefFor, newCheckHref, onPick }: {
+export function PickView({ res, hrefFor, newCheckHref, onPick, compact }: {
   res: Pick;
-  /** Ссылка на отчёт по выпуску (статический демо-режим); null — выпуск ещё не собран. */
+  /** Ссылка на отчёт по выпуску (страница /check, статический демо-режим); null — выпуск ещё не собран. */
   hrefFor?: (secid: string) => string | null;
+  /** Выбор без перехода по ссылке (чат: реплика в тот же диалог). Без hrefFor и onPick кнопка неактивна. */
   onPick?: (secid: string) => void;
   newCheckHref?: string;
+  /** В чате кнопка «Новая проверка» не нужна: выбор и новый запрос — в том же диалоге. */
+  compact?: boolean;
 }) {
   return (
     <div className="so-main so-main--narrow" data-branch="pick">
-      <a className="btn btn-ghost" href={newCheckHref ?? "./"}><BackIcon />Новая проверка</a>
+      {!compact ? <a className="btn btn-ghost" href={newCheckHref ?? "./"}><BackIcon />Новая проверка</a> : null}
       <div className="so-title">
         <h1 className="so-h1">Уточните выпуск</h1>
         <p className="text">
@@ -58,7 +61,8 @@ export function PickView({ res, hrefFor, newCheckHref, onPick }: {
   );
 }
 
-export function NotFoundView({ res, newCheckHref }: { res: NotFound; newCheckHref?: string }) {
+/** compact — в чате: ссылки «Проверить ISIN» на главную нет, новый запрос пишут в тот же диалог (сумма и комиссия сессии сохраняются). */
+export function NotFoundView({ res, newCheckHref, compact }: { res: NotFound; newCheckHref?: string; compact?: boolean }) {
   return (
     <div className="so-main so-main--tiny" data-branch="notfound">
       <section className="card so-404" data-block="notfound" aria-labelledby="h-404">
@@ -71,7 +75,7 @@ export function NotFoundView({ res, newCheckHref }: { res: NotFound; newCheckHre
           ) : null}
         </div>
         <div className="row-btns">
-          <a className="btn btn-primary btn-lg" href={newCheckHref ?? "./"}>Проверить ISIN</a>
+          {!compact ? <a className="btn btn-primary btn-lg" href={newCheckHref ?? "./"}>Проверить ISIN</a> : null}
           <button type="button" className="btn btn-outline btn-lg" disabled title="Вход файлом — после MVP">Загрузить документ продавца</button>
         </div>
         <p className="cap">Проверка по документу продавца появится после запуска шлюза обезличивания.</p>
@@ -80,13 +84,14 @@ export function NotFoundView({ res, newCheckHref }: { res: NotFound; newCheckHre
   );
 }
 
-export function ErrView({ res, newCheckHref }: { res: Err; newCheckHref?: string }) {
+/** compact — в чате: без кнопки «Новая проверка» на главную, повторить запрос можно в том же диалоге. */
+export function ErrView({ res, newCheckHref, compact }: { res: Err; newCheckHref?: string; compact?: boolean }) {
   return (
     <div className="so-main so-main--tiny" data-branch="err">
       <section className="card so-404" data-block="err">
-        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Не получилось распознать запрос</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Не получилось проверить бумагу</h1>
         <p className="text">{res.msg}</p>
-        <a className="btn btn-primary btn-lg" href={newCheckHref ?? "./"}>Новая проверка</a>
+        {!compact ? <a className="btn btn-primary btn-lg" href={newCheckHref ?? "./"}>Новая проверка</a> : null}
       </section>
     </div>
   );
