@@ -4,6 +4,7 @@
  * In-memory: демо-режим без хостинга; для прода — Redis с тем же интерфейсом.
  */
 import type { BuildResultT, ReportInputs } from "@so/engine/contract";
+import { SESSION_TTL_MS } from "@so/present/protocol";
 
 export interface ChatSession {
   id: string;
@@ -18,11 +19,10 @@ export interface ChatSession {
 }
 
 const sessions = new Map<string, ChatSession>();
-const TTL_MS = 60 * 60_000;
 export const MESSAGE_LIMIT = Number(process.env.SO_MESSAGE_LIMIT ?? 20);
 
 export function getSession(id: string): ChatSession {
-  for (const [k, s] of sessions) if (Date.now() - s.touched > TTL_MS) sessions.delete(k);
+  for (const [k, s] of sessions) if (Date.now() - s.touched > SESSION_TTL_MS) sessions.delete(k);
   let s = sessions.get(id);
   if (!s) {
     s = { id, query: null, result: null, pendingInputs: null, userMessages: 0, usage: { input: 0, output: 0, cost: 0, calls: 0, jev: 0 }, touched: Date.now() };

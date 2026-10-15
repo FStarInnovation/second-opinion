@@ -6,7 +6,9 @@
 import { useAui, useAuiState, type ToolCallMessagePartProps } from "@assistant-ui/react";
 import type { BuildResultT } from "@so/engine/contract";
 import { ReportView, PickView, NotFoundView, ErrView } from "@so/blocks";
-import type { ReportToolResult, ExplainResult } from "@/lib/tools";
+import type { ReportToolResult, ExplainResult } from "@so/present/protocol";
+import { pickMessage } from "@so/present/entry";
+import { WAIT_REPORT, WAIT_TERM } from "@so/present/copy";
 
 function Pending({ label }: { label: string }) {
   return <div className="so-tool so-tool--pending" role="status"><span className="so-dot" />{label}</div>;
@@ -20,13 +22,13 @@ function ChatPick({ res }: { res: Extract<BuildResultT, { kind: "pick" }> }) {
   const pick = (secid: string) => {
     if (aui.thread.getState().isRunning) return;
     const c = res.candidates.find((x) => x.secid === secid);
-    aui.thread.append({ role: "user", content: [{ type: "text", text: `Проверь ${c?.isin ?? secid}` }] });
+    aui.thread.append({ role: "user", content: [{ type: "text", text: pickMessage(c ?? { secid }) }] });
   };
   return <PickView res={res} onPick={busy ? undefined : pick} compact />;
 }
 
 export function ReportToolUI(p: ToolCallMessagePartProps<Record<string, unknown>, ReportToolResult | { error: string }>) {
-  if (p.status.type === "running" || p.result === undefined) return <Pending label="Собираю отчёт по данным Мосбиржи…" />;
+  if (p.status.type === "running" || p.result === undefined) return <Pending label={WAIT_REPORT} />;
   if ("error" in p.result) return <p className="note note--bad">{p.result.error}</p>;
   const res = p.result.result;
   return (
@@ -45,7 +47,7 @@ export function ReportToolUI(p: ToolCallMessagePartProps<Record<string, unknown>
 }
 
 export function ExplainToolUI(p: ToolCallMessagePartProps<{ term: string }, ExplainResult>) {
-  if (p.status.type === "running" || p.result === undefined) return <Pending label="Ищу в глоссарии…" />;
+  if (p.status.type === "running" || p.result === undefined) return <Pending label={WAIT_TERM} />;
   // Статьи нет — карточку не рисуем: отвечает модель своими словами, тупик «нет такого термина» рядом с ответом не нужен
   if (!p.result.found) return null;
   return (

@@ -193,6 +193,18 @@ export const BuildResult = z.discriminatedUnion("kind", [
 export type CandidateT = z.infer<typeof Candidate>;
 export type BuildResultT = z.infer<typeof BuildResult>;
 
+/**
+ * Ввод пользователя — единственная схема (И4 плана WP-TG): инструмент set_inputs и build_bond_report, поле inputs тела /api/chat,
+ * параметры /chat?q=… и deep-link бота (@so/present/entry), страница /check и /api/report. Описания полей видит модель
+ * (inputSchema инструментов), поэтому они — часть контракта.
+ */
+export const ReportInputsSchema = z.object({
+  position_size: z.number().int().min(1000).max(1e10).optional().describe("Сумма вложения в рублях"),
+  k_pct: z.number().min(0).max(3).nullable().optional().describe("Комиссия брокера, % от суммы сделки; null — убрать"),
+  promised_pct: z.number().min(0).max(100).nullable().optional().describe("Сколько пообещал продавец, % годовых; null — убрать"),
+  offer_price_pct: z.number().min(1).max(300).nullable().optional().describe("Цена предложения, % от номинала — только когда у бумаги нет биржевой цены"),
+});
+
 /** Ввод пользователя, меняющий отчёт без похода в ISS (кроме offer_price_pct — та требует пересборки). */
 export interface ReportInputs {
   position_size?: number;

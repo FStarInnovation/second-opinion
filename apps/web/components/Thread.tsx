@@ -4,14 +4,9 @@
  */
 import type { FC } from "react";
 import { ThreadPrimitive, MessagePrimitive, ComposerPrimitive } from "@assistant-ui/react";
+import { SUGGESTIONS } from "@so/present/entry";
+import { DISCLAIMER } from "@so/present/copy";
 import { TOOL_UIS, ToolFallback } from "./ToolUIs";
-
-const SUGGESTIONS = [
-  "Проверь РОЛЬФ 1Р07, обещали 26%",
-  "RU000A0JS4Z7 — говорят, 18% годовых",
-  "Черкизово",
-  "Что такое НКД?",
-];
 
 const Text: FC = () => <MessagePrimitive.Parts components={{ Text: TextPart }} />;
 const TextPart: FC<{ text: string }> = ({ text }) => <p className="so-msg__text">{text}</p>;
@@ -73,7 +68,7 @@ export const Thread: FC<{ mock?: boolean }> = ({ mock }) => (
             <ComposerPrimitive.Cancel className="btn btn-outline so-composer__send">Стоп</ComposerPrimitive.Cancel>
           </ThreadPrimitive.If>
         </ComposerPrimitive.Root>
-        <p className="cap so-thread__disclaimer">Не является индивидуальной инвестиционной рекомендацией. Данные Мосбиржи с задержкой до 15 минут.</p>
+        <p className="cap so-thread__disclaimer">{DISCLAIMER}</p>
         {/* Без строки «модель · маршрутизация»: пользователю она не нужна; бейдж — только в режиме MOCK (разработка, ключей нет) */}
         {mock && <p className="cap so-thread__mock" data-mode="mock">Режим MOCK — расход $0</p>}
       </ThreadPrimitive.ViewportFooter>

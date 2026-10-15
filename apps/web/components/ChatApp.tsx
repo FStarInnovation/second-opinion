@@ -2,17 +2,13 @@
 import { useEffect, useMemo, useRef } from "react";
 import { AssistantRuntimeProvider, useAui, useAuiState } from "@assistant-ui/react";
 import { useChatRuntime, AssistantChatTransport } from "@assistant-ui/react-ai-sdk";
-import type { ReportInputs } from "@so/engine/contract";
 import { SiteHeader } from "@so/blocks";
+import { firstText, type ChatInitial } from "@so/present/entry";
 import { Thread } from "./Thread";
 
-/** Вход в чат, уже проверенный сервером (app/chat/page.tsx): переход с /check — бумага и вводы; вопрос с главной — text (?m=…). */
-export type ChatInitial = { q: string; inputs: ReportInputs; text?: never } | { text: string; q?: never; inputs?: never };
-
-/** Первое сообщение. С главной — текст пользователя как есть. С /check — только то, что гейт надёжно разбирает в одной реплике
- *  (check_security + «обещали»); сумма / комиссия / цена идут полем inputs тела запроса, не текстом (одна реплика — одно намерение, R2-21). */
-const firstText = (i: ChatInitial) =>
-  i.text ?? `Проверь ${i.q}` + (i.inputs?.promised_pct != null ? `, обещали ${String(i.inputs.promised_pct).replace(".", ",")}%` : "");
+/** Вход в чат, уже проверенный сервером (app/chat/page.tsx → initialOf): переход с /check — бумага и вводы; вопрос с главной — text (?m=…).
+ *  Первое сообщение — firstText (@so/present/entry): то же, что первая реплика deep-link бота. */
+export type { ChatInitial };
 
 /** Автоотправка первого сообщения при переходе с /check или с главной: один раз и только в пустую ленту. Отправка — в таймере после
  *  коммита (рантайм уже подключил транспорт), таймер снимается при размонтировании — двойной эффект StrictMode не шлёт дважды. */

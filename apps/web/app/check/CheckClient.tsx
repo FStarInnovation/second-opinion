@@ -2,20 +2,15 @@
 import { useRouter } from "next/navigation";
 import type { BuildResultT, ReportInputs } from "@so/engine/contract";
 import { ResultApp } from "@so/blocks";
+import { chatParams } from "@so/present/entry";
 
 /** Переход «отчёт → ассистент»: та же бумага (ISIN стабильнее текста запроса) и те же вводы — актуальные, из состояния ResultApp.
- *  Контракт параметров — docs/PLAN_check-to-chat_2026-10-10.md §3; /chat их валидирует сам (схема set_inputs). */
+ *  Параметры — chatParams (@so/present/entry; контракт — docs/PLAN_check-to-chat_2026-10-10.md §3); /chat их валидирует сам (initialOf). */
 function chatHref(res: BuildResultT, query: string): string | null {
-  if (res.kind !== "report") return null;
-  const r = res.report;
-  const q = (r.security.isin ?? r.security.secid ?? query).trim();
-  if (!q || q.length > 200) return null;
-  const sp = new URLSearchParams({ q });
-  const i = r.inputs;
-  if (i.promised_pct != null && i.promised_pct > 0) sp.set("promised", String(i.promised_pct));
-  if (i.position_size != null) sp.set("pos", String(i.position_size));
-  if (i.k_pct != null) sp.set("k", String(i.k_pct));
-  if (i.offer_price_pct != null) sp.set("price", String(i.offer_price_pct)); // отчёт собран по цене пользователя (ветка «нет цены»)
+  const p = chatParams(res, query);
+  if (!p) return null;
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(p)) if (v != null) sp.set(k, v);
   return `/chat?${sp}`;
 }
 

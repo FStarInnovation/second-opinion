@@ -5,26 +5,19 @@
  */
 import { tool } from "ai";
 import { z } from "zod";
-import type { BuildResultT, ReportInputs } from "@so/engine/contract";
+import { ReportInputsSchema, type ReportInputs } from "@so/engine/contract";
+import type { ExplainResult, ReportToolResult } from "@so/present/protocol";
 import { buildCached, rebuild } from "./engine";
 import { digestResult } from "./digest";
 import { findTerm, GLOSSARY } from "./glossary";
 import { setResult, withPending, type ChatSession } from "./session";
 
-export const TOOL_NAMES = ["resolve_security", "build_bond_report", "set_inputs", "explain_term"] as const;
-export type ToolName = (typeof TOOL_NAMES)[number];
+/** Имена инструментов и формы их выходов — общий протокол сервера и клиентов (@so/present/protocol) */
+export { TOOL_NAMES, type ToolName, type ReportToolResult, type ExplainResult } from "@so/present/protocol";
 
-/** Результат любого инструмента отчёта — конверт движка плюс запрос, по которому он собран. */
-export type ReportToolResult = { query: string; result: BuildResultT };
-export type ExplainResult = { found: true; id: string; title: string; text: string } | { found: false; query: string; known: string[] };
-
-/** Ввод пользователя — единственная схема: инструмент set_inputs, поле inputs тела /api/chat и параметры /chat?q=… (переход с /check). */
-export const inputsSchema = z.object({
-  position_size: z.number().int().min(1000).max(1e10).optional().describe("Сумма вложения в рублях"),
-  k_pct: z.number().min(0).max(3).nullable().optional().describe("Комиссия брокера, % от суммы сделки; null — убрать"),
-  promised_pct: z.number().min(0).max(100).nullable().optional().describe("Сколько пообещал продавец, % годовых; null — убрать"),
-  offer_price_pct: z.number().min(1).max(300).nullable().optional().describe("Цена предложения, % от номинала — только когда у бумаги нет биржевой цены"),
-});
+/** Ввод пользователя — единственная схема (@so/engine/contract): инструмент set_inputs, поле inputs тела /api/chat, параметры /chat?q=…
+ *  (переход с /check) и deep-link бота, страница /check и /api/report. Тот же объект, не копия. */
+export const inputsSchema = ReportInputsSchema;
 
 export function makeTools(session: ChatSession) {
   const resolve_security = tool({
