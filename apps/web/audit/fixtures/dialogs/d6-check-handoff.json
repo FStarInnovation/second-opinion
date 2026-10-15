@@ -1,0 +1,42 @@
+{
+ "name": "d6-check-handoff",
+ "description": "Переход со страницы проверки: /chat?q=RU000A1038V6&promised=15&pos=1000000&k=0.3 (автоотправка с inputs)",
+ "actions": [
+  "open:/chat?q=RU000A1038V6&promised=15&pos=1000000&k=0.3"
+ ],
+ "source": "Реальные тела POST /api/chat из браузера (assistant-ui AssistantChatTransport), записаны прокси 14.10.2026 на локальной прод-сборке коммита d16c809 (= прод a1d695d по коду) в режиме SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0. Эталон «что шлёт сайт» для проверки паритета бота (WP-TG). Ответы сервера не сохранены: их даёт тот же /api/chat при прогоне.",
+ "requests": [
+  {
+   "headers": {
+    "x-so-chat": "c_n0dvprg3qt",
+    "content-type": "application/json"
+   },
+   "body": {
+    "tools": {},
+    "inputs": {
+     "promised_pct": 15,
+     "position_size": 1000000,
+     "k_pct": 0.3
+    },
+    "id": "__LOCALID_mRum6D9",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Проверь RU000A1038V6, обещали 15%"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "175KRzr28gyef88n"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  }
+ ]
+}

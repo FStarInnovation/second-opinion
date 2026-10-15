@@ -1,0 +1,89 @@
+{
+ "name": "d4-advice-offtopic",
+ "description": "«предложи ты бумагу» → «который час?»",
+ "actions": [
+  "type:предложи ты бумагу",
+  "type:который час?"
+ ],
+ "source": "Реальные тела POST /api/chat из браузера (assistant-ui AssistantChatTransport), записаны прокси 14.10.2026 на локальной прод-сборке коммита d16c809 (= прод a1d695d по коду) в режиме SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0. Эталон «что шлёт сайт» для проверки паритета бота (WP-TG). Ответы сервера не сохранены: их даёт тот же /api/chat при прогоне.",
+ "requests": [
+  {
+   "headers": {
+    "x-so-chat": "c_3tgfxfoxhd",
+    "content-type": "application/json"
+   },
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_GASuYBn",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "предложи ты бумагу"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "S60eDhAkIQi9XE5l"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  },
+  {
+   "headers": {
+    "x-so-chat": "c_3tgfxfoxhd",
+    "content-type": "application/json"
+   },
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_GASuYBn",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "предложи ты бумагу"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "S60eDhAkIQi9XE5l"
+     },
+     {
+      "id": "SEcV9vmxCQpSQOen",
+      "role": "assistant",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Советов и рекомендаций, что покупать, не даю — решение за вами. Я помогаю только с проверкой облигаций, которые торгуются на Мосбирже: назовите выпуск, ISIN или эмитента, который вам предлагают, — соберу отчёт.",
+        "state": "done"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "который час?"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "P3icOX1g5JilIXkw"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  }
+ ]
+}

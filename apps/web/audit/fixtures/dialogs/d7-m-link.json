@@ -1,0 +1,37 @@
+{
+ "name": "d7-m-link",
+ "description": "Ссылка /chat?m=Что такое НКД? (автоотправка)",
+ "actions": [
+  "open:/chat?m=Что такое НКД?"
+ ],
+ "source": "Реальные тела POST /api/chat из браузера (assistant-ui AssistantChatTransport), записаны прокси 14.10.2026 на локальной прод-сборке коммита d16c809 (= прод a1d695d по коду) в режиме SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0. Эталон «что шлёт сайт» для проверки паритета бота (WP-TG). Ответы сервера не сохранены: их даёт тот же /api/chat при прогоне.",
+ "requests": [
+  {
+   "headers": {
+    "x-so-chat": "c_4rwvhae0hj",
+    "content-type": "application/json"
+   },
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_daSKV4E",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Что такое НКД?"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "wKvoi5gA3N7gzKU6"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  }
+ ]
+}

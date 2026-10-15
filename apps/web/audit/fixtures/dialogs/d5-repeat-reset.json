@@ -1,0 +1,1128 @@
+{
+ "name": "d5-repeat-reset",
+ "description": "«Проверь RU000A10ASE2» → «вложу 2 млн» → «Проверь RU000A10ASE2 на 1 млн» (сумма в реплике проверки — сброс переноса)",
+ "actions": [
+  "type:Проверь RU000A10ASE2",
+  "type:вложу 2 млн",
+  "type:Проверь RU000A10ASE2 на 1 млн"
+ ],
+ "source": "Реальные тела POST /api/chat из браузера (assistant-ui AssistantChatTransport), записаны прокси 14.10.2026 на локальной прод-сборке коммита d16c809 (= прод a1d695d по коду) в режиме SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0. Эталон «что шлёт сайт» для проверки паритета бота (WP-TG). Ответы сервера не сохранены: их даёт тот же /api/chat при прогоне.",
+ "requests": [
+  {
+   "headers": {
+    "x-so-chat": "c_vnryasfqka",
+    "content-type": "application/json"
+   },
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_hTclm33",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Проверь RU000A10ASE2"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "JBtNKOfbPpUhfE9J"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  },
+  {
+   "headers": {
+    "x-so-chat": "c_vnryasfqka",
+    "content-type": "application/json"
+   },
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_hTclm33",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Проверь RU000A10ASE2"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "JBtNKOfbPpUhfE9J"
+     },
+     {
+      "id": "fBP0o7Dja1qp0b2Q",
+      "role": "assistant",
+      "parts": [
+       {
+        "type": "tool-resolve_security",
+        "toolCallId": "gate_jwpr0yaa",
+        "state": "output-available",
+        "input": {
+         "query": "RU000A10ASE2"
+        },
+        "output": {
+         "query": "RU000A10ASE2",
+         "result": {
+          "kind": "report",
+          "report": {
+           "schema": "bond_report@1",
+           "product_type": "bond",
+           "built_at": "2026-10-14T11:27:11.420Z",
+           "data_time": {
+            "updatetime": "13:16:42",
+            "trade_date": "2026-10-08",
+            "line": "Данные Мосбиржи на 13:16 МСК, 08.10.2026. Задержка до 15 минут"
+           },
+           "security": {
+            "secid": "RU000A10ASE2",
+            "isin": "RU000A10ASE2",
+            "boardid": "TQCB",
+            "shortname": "РОЛЬФ 1Р07",
+            "name": "РОЛЬФ БО 001Р-07",
+            "regnumber": "4B02-07-16689-A-001P",
+            "emitent_title": "Акционерное общество \"РОЛЬФ\"",
+            "typename": "Биржевая облигация"
+           },
+           "status": {
+            "kind": "ok",
+            "reason": null
+           },
+           "product": {
+            "plain_text": "Биржевая облигация Акционерное общество \"РОЛЬФ\" на 3 мес., фиксированный купон 26% годовых, без амортизации, без оферты. Номинал в рублях.",
+            "coupon_kind": "fixed",
+            "coupon_label": "фиксированный 26%",
+            "amortization": false,
+            "offer": {
+             "type": "none",
+             "date": null,
+             "price_pct": null,
+             "price_assumed_par": false,
+             "days_to": null
+            },
+            "faceunit": "SUR",
+            "currency_word": "рублях",
+            "listlevel": 2,
+            "qualified": false,
+            "maturity_date": "21.01.2027"
+           },
+           "claim": {
+            "promised_pct": null,
+            "promised_text": null,
+            "source": null,
+            "gap_pp": null,
+            "line": null
+           },
+           "yield": {
+            "kind": "single",
+            "horizon": "maturity",
+            "horizon_date": "21.01.2027",
+            "horizon_label": "погашения 21.01.2027",
+            "values": [
+             {
+              "label": "к погашению 21.01.2027",
+              "pct": 20.16
+             }
+            ],
+            "main_pct": 20.16,
+            "period_income": null,
+            "exchange": {
+             "pct": 20.16,
+             "price_pct": 102.06,
+             "datetype": "MATDATE",
+             "used_as_main": true
+            },
+            "own_control_pct": 20.16,
+            "control_diff_pp": 0,
+            "control_failed": false,
+            "not_calculated_reason": null,
+            "line": "20,16% годовых — при покупке по 102,06% от номинала (1 032,00 ₽ с НКД) и удержании до погашения 21.01.2027. Купон — 26%."
+           },
+           "price": {
+            "clean_pct": 102.06,
+            "prev_used": false,
+            "from_user": false,
+            "facevalue": 1000,
+            "accruedint": 11.4,
+            "full_price": 1032,
+            "clean_price": 1020.6,
+            "next_coupon_date": "23.10.2026",
+            "currency": "RUB",
+            "line": "Цена покупки 1 032,00 ₽ = 1 020,60 ₽ (102,06%) + НКД 11,40 ₽; НКД — не комиссия, вернётся с купоном 23.10.2026."
+           },
+           "liquidity": {
+            "traded": true,
+            "avg_turnover": 5419969,
+            "days_counted": 20,
+            "trades_per_day": 248.75,
+            "spread_pct": 0.08,
+            "spread_missing_side": false,
+            "position_size": 500000,
+            "share_pct": 9.23,
+            "exit_now_pct": 0.0392,
+            "exit_now_money": 196,
+            "exit_days": 1,
+            "category": "умеренно",
+            "no_exit": false,
+            "line": "При позиции 500 000 ₽ стоимость моментального выхода ≈ 0,04%, аккуратного выхода ≈ 1 день. Категория ликвидности — умеренно.",
+            "metrics_line": "За 20 торговых дней: средний оборот 5,4 млн ₽ в день, 249 сделок в день; спред 0,08%."
+           },
+           "fees_tax": {
+            "k_pct": null,
+            "k_grid": [
+             [
+              0,
+              20.16,
+              17.33
+             ],
+             [
+              0.1,
+              19.73,
+              16.96
+             ],
+             [
+              0.3,
+              18.86,
+              16.22
+             ],
+             [
+              0.5,
+              18,
+              15.48
+             ],
+             [
+              1,
+              15.89,
+              13.68
+             ]
+            ],
+            "pre_tax_pct": 20.16,
+            "post_tax_pct": 17.33,
+            "tax_note": "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
+            "line": "Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: 20,16% до налога по графику выплат и 17,33% после налога 13%."
+           },
+           "worst": [
+            {
+             "id": "rates",
+             "title": "Рост ставок",
+             "text": "При росте ставок на 1 п.п. цена упадёт примерно на 0,2%, на 3 п.п. — на 0,7% (−3 420 ₽ на вашу позицию). Если держать до погашения 21.01.2027, убытка не будет.",
+             "loss_pct_1pp": 0.228,
+             "loss_pct_3pp": 0.684
+            },
+            {
+             "id": "default",
+             "title": "Дефолт эмитента",
+             "text": "В худшем случае можно потерять вложенное — до 500 000 ₽. Рынок оценивает кредитный риск эмитента как высокий.",
+             "loss_pct_1pp": null,
+             "loss_pct_3pp": null
+            }
+           ],
+           "flags": [
+            {
+             "id": 1,
+             "title": "Только для квалифицированных инвесторов",
+             "text": "Регулятор признал инструмент сложным для массового инвестора.",
+             "fired": false,
+             "points": 0,
+             "details": "ISQUALIFIEDINVESTORS = 0"
+            },
+            {
+             "id": 2,
+             "title": "Низкий уровень листинга",
+             "text": "Минимальные требования биржи к эмитенту по раскрытию информации.",
+             "fired": false,
+             "points": 0,
+             "details": "LISTLEVEL = 2"
+            },
+            {
+             "id": 3,
+             "title": "Высокая премия за риск",
+             "text": "Рынок оценивает кредитный риск эмитента как существенный.",
+             "fired": true,
+             "points": 20,
+             "details": "GSPREADBP = 860 б.п."
+            },
+            {
+             "id": 4,
+             "title": "Неликвидный выпуск",
+             "text": "Мало оборота или сделок — выйти из позиции сложно.",
+             "fired": false,
+             "points": 0,
+             "details": "за 20 дн.: 5,4 млн ₽/день, 249 сделок/день"
+            },
+            {
+             "id": 5,
+             "title": "Широкий спред",
+             "text": "Большая разница между ценой покупки и продажи — потеря при каждой сделке.",
+             "fired": false,
+             "points": 0,
+             "details": "спред 0,08%"
+            },
+            {
+             "id": 6,
+             "title": "Не торгуется",
+             "text": "Биржевых торгов нет — выйти через биржу нельзя.",
+             "fired": false,
+             "points": 0,
+             "details": "торгуется"
+            },
+            {
+             "id": 7,
+             "title": "Длинная дюрация",
+             "text": "Цена сильно реагирует на изменение ставок.",
+             "fired": false,
+             "points": 0,
+             "details": "DURATION = 0,3 г."
+            },
+            {
+             "id": 8,
+             "title": "Эмитент может погасить досрочно (call)",
+             "text": "Эмитент может погасить выпуск в выгодный для себя момент.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 9,
+             "title": "Ставка после оферты неизвестна",
+             "text": "После оферты ставку купона назначит эмитент.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 10,
+             "title": "Валютный риск",
+             "text": "Номинал не в рублях — к риску облигации добавляется курсовой.",
+             "fired": false,
+             "points": 0,
+             "details": "FACEUNIT = SUR"
+            },
+            {
+             "id": 11,
+             "title": "Плавающий купон",
+             "text": "Доход зависит от рыночной ставки и снизится вместе с ней.",
+             "fired": false,
+             "points": 0,
+             "details": "купон постоянный"
+            },
+            {
+             "id": 12,
+             "title": "Обещанная доходность выше реальной",
+             "text": "Вам обещали больше, чем бумага даёт на самом деле.",
+             "fired": false,
+             "points": 0,
+             "details": "заявленная не указана"
+            },
+            {
+             "id": 13,
+             "title": "Дефолт в истории выпуска",
+             "text": "По выпуску уже был дефолт или технический дефолт.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 14,
+             "title": "Структурный продукт",
+             "text": "Выплата зависит от базового актива или события, а не от купона — можно получить меньше номинала или только номинал.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 15,
+             "title": "Бессрочная",
+             "text": "Даты погашения нет — вернуть номинал можно только продажей на бирже или по решению эмитента о выкупе.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            }
+           ],
+           "truth_score": {
+            "score": 80,
+            "grade": "Есть оговорки",
+            "top3": [
+             3
+            ],
+            "more_count": 0,
+            "none_fired": false
+           },
+           "macro": null,
+           "panels": [
+            "data_line",
+            "product",
+            "yield",
+            "price_line",
+            "liquidity",
+            "fees",
+            "worst",
+            "flags_score",
+            "plaque"
+           ],
+           "inputs": {
+            "position_size": 500000,
+            "k_pct": null,
+            "promised_pct": null,
+            "offer_price_pct": null
+           },
+           "diagnostics": {
+            "snapshot_dir": "/Users/zv/ТафсТендер/second-opinion/packages/engine/golden/snapshots/rolf",
+            "control_diff_pp": 0,
+            "warnings": []
+           }
+          }
+         }
+        }
+       },
+       {
+        "type": "text",
+        "text": "Отчёт по РОЛЬФ 1Р07 собран — смотрите блоки выше. Главные red flags: высокая премия за риск. Напишите сумму, комиссию брокера или сколько вам обещали — пересчитаю.",
+        "state": "done"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "вложу 2 млн"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "kXPcIHJxllFDedKK"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  },
+  {
+   "headers": {
+    "x-so-chat": "c_vnryasfqka",
+    "content-type": "application/json"
+   },
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_hTclm33",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Проверь RU000A10ASE2"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "JBtNKOfbPpUhfE9J"
+     },
+     {
+      "id": "fBP0o7Dja1qp0b2Q",
+      "role": "assistant",
+      "parts": [
+       {
+        "type": "tool-resolve_security",
+        "toolCallId": "gate_jwpr0yaa",
+        "state": "output-available",
+        "input": {
+         "query": "RU000A10ASE2"
+        },
+        "output": {
+         "query": "RU000A10ASE2",
+         "result": {
+          "kind": "report",
+          "report": {
+           "schema": "bond_report@1",
+           "product_type": "bond",
+           "built_at": "2026-10-14T11:27:11.420Z",
+           "data_time": {
+            "updatetime": "13:16:42",
+            "trade_date": "2026-10-08",
+            "line": "Данные Мосбиржи на 13:16 МСК, 08.10.2026. Задержка до 15 минут"
+           },
+           "security": {
+            "secid": "RU000A10ASE2",
+            "isin": "RU000A10ASE2",
+            "boardid": "TQCB",
+            "shortname": "РОЛЬФ 1Р07",
+            "name": "РОЛЬФ БО 001Р-07",
+            "regnumber": "4B02-07-16689-A-001P",
+            "emitent_title": "Акционерное общество \"РОЛЬФ\"",
+            "typename": "Биржевая облигация"
+           },
+           "status": {
+            "kind": "ok",
+            "reason": null
+           },
+           "product": {
+            "plain_text": "Биржевая облигация Акционерное общество \"РОЛЬФ\" на 3 мес., фиксированный купон 26% годовых, без амортизации, без оферты. Номинал в рублях.",
+            "coupon_kind": "fixed",
+            "coupon_label": "фиксированный 26%",
+            "amortization": false,
+            "offer": {
+             "type": "none",
+             "date": null,
+             "price_pct": null,
+             "price_assumed_par": false,
+             "days_to": null
+            },
+            "faceunit": "SUR",
+            "currency_word": "рублях",
+            "listlevel": 2,
+            "qualified": false,
+            "maturity_date": "21.01.2027"
+           },
+           "claim": {
+            "promised_pct": null,
+            "promised_text": null,
+            "source": null,
+            "gap_pp": null,
+            "line": null
+           },
+           "yield": {
+            "kind": "single",
+            "horizon": "maturity",
+            "horizon_date": "21.01.2027",
+            "horizon_label": "погашения 21.01.2027",
+            "values": [
+             {
+              "label": "к погашению 21.01.2027",
+              "pct": 20.16
+             }
+            ],
+            "main_pct": 20.16,
+            "period_income": null,
+            "exchange": {
+             "pct": 20.16,
+             "price_pct": 102.06,
+             "datetype": "MATDATE",
+             "used_as_main": true
+            },
+            "own_control_pct": 20.16,
+            "control_diff_pp": 0,
+            "control_failed": false,
+            "not_calculated_reason": null,
+            "line": "20,16% годовых — при покупке по 102,06% от номинала (1 032,00 ₽ с НКД) и удержании до погашения 21.01.2027. Купон — 26%."
+           },
+           "price": {
+            "clean_pct": 102.06,
+            "prev_used": false,
+            "from_user": false,
+            "facevalue": 1000,
+            "accruedint": 11.4,
+            "full_price": 1032,
+            "clean_price": 1020.6,
+            "next_coupon_date": "23.10.2026",
+            "currency": "RUB",
+            "line": "Цена покупки 1 032,00 ₽ = 1 020,60 ₽ (102,06%) + НКД 11,40 ₽; НКД — не комиссия, вернётся с купоном 23.10.2026."
+           },
+           "liquidity": {
+            "traded": true,
+            "avg_turnover": 5419969,
+            "days_counted": 20,
+            "trades_per_day": 248.75,
+            "spread_pct": 0.08,
+            "spread_missing_side": false,
+            "position_size": 500000,
+            "share_pct": 9.23,
+            "exit_now_pct": 0.0392,
+            "exit_now_money": 196,
+            "exit_days": 1,
+            "category": "умеренно",
+            "no_exit": false,
+            "line": "При позиции 500 000 ₽ стоимость моментального выхода ≈ 0,04%, аккуратного выхода ≈ 1 день. Категория ликвидности — умеренно.",
+            "metrics_line": "За 20 торговых дней: средний оборот 5,4 млн ₽ в день, 249 сделок в день; спред 0,08%."
+           },
+           "fees_tax": {
+            "k_pct": null,
+            "k_grid": [
+             [
+              0,
+              20.16,
+              17.33
+             ],
+             [
+              0.1,
+              19.73,
+              16.96
+             ],
+             [
+              0.3,
+              18.86,
+              16.22
+             ],
+             [
+              0.5,
+              18,
+              15.48
+             ],
+             [
+              1,
+              15.89,
+              13.68
+             ]
+            ],
+            "pre_tax_pct": 20.16,
+            "post_tax_pct": 17.33,
+            "tax_note": "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
+            "line": "Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: 20,16% до налога по графику выплат и 17,33% после налога 13%."
+           },
+           "worst": [
+            {
+             "id": "rates",
+             "title": "Рост ставок",
+             "text": "При росте ставок на 1 п.п. цена упадёт примерно на 0,2%, на 3 п.п. — на 0,7% (−3 420 ₽ на вашу позицию). Если держать до погашения 21.01.2027, убытка не будет.",
+             "loss_pct_1pp": 0.228,
+             "loss_pct_3pp": 0.684
+            },
+            {
+             "id": "default",
+             "title": "Дефолт эмитента",
+             "text": "В худшем случае можно потерять вложенное — до 500 000 ₽. Рынок оценивает кредитный риск эмитента как высокий.",
+             "loss_pct_1pp": null,
+             "loss_pct_3pp": null
+            }
+           ],
+           "flags": [
+            {
+             "id": 1,
+             "title": "Только для квалифицированных инвесторов",
+             "text": "Регулятор признал инструмент сложным для массового инвестора.",
+             "fired": false,
+             "points": 0,
+             "details": "ISQUALIFIEDINVESTORS = 0"
+            },
+            {
+             "id": 2,
+             "title": "Низкий уровень листинга",
+             "text": "Минимальные требования биржи к эмитенту по раскрытию информации.",
+             "fired": false,
+             "points": 0,
+             "details": "LISTLEVEL = 2"
+            },
+            {
+             "id": 3,
+             "title": "Высокая премия за риск",
+             "text": "Рынок оценивает кредитный риск эмитента как существенный.",
+             "fired": true,
+             "points": 20,
+             "details": "GSPREADBP = 860 б.п."
+            },
+            {
+             "id": 4,
+             "title": "Неликвидный выпуск",
+             "text": "Мало оборота или сделок — выйти из позиции сложно.",
+             "fired": false,
+             "points": 0,
+             "details": "за 20 дн.: 5,4 млн ₽/день, 249 сделок/день"
+            },
+            {
+             "id": 5,
+             "title": "Широкий спред",
+             "text": "Большая разница между ценой покупки и продажи — потеря при каждой сделке.",
+             "fired": false,
+             "points": 0,
+             "details": "спред 0,08%"
+            },
+            {
+             "id": 6,
+             "title": "Не торгуется",
+             "text": "Биржевых торгов нет — выйти через биржу нельзя.",
+             "fired": false,
+             "points": 0,
+             "details": "торгуется"
+            },
+            {
+             "id": 7,
+             "title": "Длинная дюрация",
+             "text": "Цена сильно реагирует на изменение ставок.",
+             "fired": false,
+             "points": 0,
+             "details": "DURATION = 0,3 г."
+            },
+            {
+             "id": 8,
+             "title": "Эмитент может погасить досрочно (call)",
+             "text": "Эмитент может погасить выпуск в выгодный для себя момент.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 9,
+             "title": "Ставка после оферты неизвестна",
+             "text": "После оферты ставку купона назначит эмитент.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 10,
+             "title": "Валютный риск",
+             "text": "Номинал не в рублях — к риску облигации добавляется курсовой.",
+             "fired": false,
+             "points": 0,
+             "details": "FACEUNIT = SUR"
+            },
+            {
+             "id": 11,
+             "title": "Плавающий купон",
+             "text": "Доход зависит от рыночной ставки и снизится вместе с ней.",
+             "fired": false,
+             "points": 0,
+             "details": "купон постоянный"
+            },
+            {
+             "id": 12,
+             "title": "Обещанная доходность выше реальной",
+             "text": "Вам обещали больше, чем бумага даёт на самом деле.",
+             "fired": false,
+             "points": 0,
+             "details": "заявленная не указана"
+            },
+            {
+             "id": 13,
+             "title": "Дефолт в истории выпуска",
+             "text": "По выпуску уже был дефолт или технический дефолт.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 14,
+             "title": "Структурный продукт",
+             "text": "Выплата зависит от базового актива или события, а не от купона — можно получить меньше номинала или только номинал.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 15,
+             "title": "Бессрочная",
+             "text": "Даты погашения нет — вернуть номинал можно только продажей на бирже или по решению эмитента о выкупе.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            }
+           ],
+           "truth_score": {
+            "score": 80,
+            "grade": "Есть оговорки",
+            "top3": [
+             3
+            ],
+            "more_count": 0,
+            "none_fired": false
+           },
+           "macro": null,
+           "panels": [
+            "data_line",
+            "product",
+            "yield",
+            "price_line",
+            "liquidity",
+            "fees",
+            "worst",
+            "flags_score",
+            "plaque"
+           ],
+           "inputs": {
+            "position_size": 500000,
+            "k_pct": null,
+            "promised_pct": null,
+            "offer_price_pct": null
+           },
+           "diagnostics": {
+            "snapshot_dir": "/Users/zv/ТафсТендер/second-opinion/packages/engine/golden/snapshots/rolf",
+            "control_diff_pp": 0,
+            "warnings": []
+           }
+          }
+         }
+        }
+       },
+       {
+        "type": "text",
+        "text": "Отчёт по РОЛЬФ 1Р07 собран — смотрите блоки выше. Главные red flags: высокая премия за риск. Напишите сумму, комиссию брокера или сколько вам обещали — пересчитаю.",
+        "state": "done"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "вложу 2 млн"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "kXPcIHJxllFDedKK"
+     },
+     {
+      "id": "cgJJGbxOd8Q40Pkr",
+      "role": "assistant",
+      "parts": [
+       {
+        "type": "tool-set_inputs",
+        "toolCallId": "gate_u1iu6lfb",
+        "state": "output-available",
+        "input": {
+         "position_size": 2000000
+        },
+        "output": {
+         "query": "RU000A10ASE2",
+         "result": {
+          "kind": "report",
+          "report": {
+           "schema": "bond_report@1",
+           "product_type": "bond",
+           "built_at": "2026-10-14T11:27:11.420Z",
+           "data_time": {
+            "updatetime": "13:16:42",
+            "trade_date": "2026-10-08",
+            "line": "Данные Мосбиржи на 13:16 МСК, 08.10.2026. Задержка до 15 минут"
+           },
+           "security": {
+            "secid": "RU000A10ASE2",
+            "isin": "RU000A10ASE2",
+            "boardid": "TQCB",
+            "shortname": "РОЛЬФ 1Р07",
+            "name": "РОЛЬФ БО 001Р-07",
+            "regnumber": "4B02-07-16689-A-001P",
+            "emitent_title": "Акционерное общество \"РОЛЬФ\"",
+            "typename": "Биржевая облигация"
+           },
+           "status": {
+            "kind": "ok",
+            "reason": null
+           },
+           "product": {
+            "plain_text": "Биржевая облигация Акционерное общество \"РОЛЬФ\" на 3 мес., фиксированный купон 26% годовых, без амортизации, без оферты. Номинал в рублях.",
+            "coupon_kind": "fixed",
+            "coupon_label": "фиксированный 26%",
+            "amortization": false,
+            "offer": {
+             "type": "none",
+             "date": null,
+             "price_pct": null,
+             "price_assumed_par": false,
+             "days_to": null
+            },
+            "faceunit": "SUR",
+            "currency_word": "рублях",
+            "listlevel": 2,
+            "qualified": false,
+            "maturity_date": "21.01.2027"
+           },
+           "claim": {
+            "promised_pct": null,
+            "promised_text": null,
+            "source": null,
+            "gap_pp": null,
+            "line": null
+           },
+           "yield": {
+            "kind": "single",
+            "horizon": "maturity",
+            "horizon_date": "21.01.2027",
+            "horizon_label": "погашения 21.01.2027",
+            "values": [
+             {
+              "label": "к погашению 21.01.2027",
+              "pct": 20.16
+             }
+            ],
+            "main_pct": 20.16,
+            "period_income": null,
+            "exchange": {
+             "pct": 20.16,
+             "price_pct": 102.06,
+             "datetype": "MATDATE",
+             "used_as_main": true
+            },
+            "own_control_pct": 20.16,
+            "control_diff_pp": 0,
+            "control_failed": false,
+            "not_calculated_reason": null,
+            "line": "20,16% годовых — при покупке по 102,06% от номинала (1 032,00 ₽ с НКД) и удержании до погашения 21.01.2027. Купон — 26%."
+           },
+           "price": {
+            "clean_pct": 102.06,
+            "prev_used": false,
+            "from_user": false,
+            "facevalue": 1000,
+            "accruedint": 11.4,
+            "full_price": 1032,
+            "clean_price": 1020.6,
+            "next_coupon_date": "23.10.2026",
+            "currency": "RUB",
+            "line": "Цена покупки 1 032,00 ₽ = 1 020,60 ₽ (102,06%) + НКД 11,40 ₽; НКД — не комиссия, вернётся с купоном 23.10.2026."
+           },
+           "liquidity": {
+            "traded": true,
+            "avg_turnover": 5419969,
+            "days_counted": 20,
+            "trades_per_day": 248.75,
+            "spread_pct": 0.08,
+            "spread_missing_side": false,
+            "position_size": 2000000,
+            "share_pct": 36.9,
+            "exit_now_pct": 0.0392,
+            "exit_now_money": 784,
+            "exit_days": 2,
+            "category": "умеренно",
+            "no_exit": false,
+            "line": "При позиции 2 000 000 ₽ стоимость моментального выхода ≈ 0,04%, аккуратного выхода ≈ 2 дня. Категория ликвидности — умеренно.",
+            "metrics_line": "За 20 торговых дней: средний оборот 5,4 млн ₽ в день, 249 сделок в день; спред 0,08%."
+           },
+           "fees_tax": {
+            "k_pct": null,
+            "k_grid": [
+             [
+              0,
+              20.16,
+              17.33
+             ],
+             [
+              0.1,
+              19.73,
+              16.96
+             ],
+             [
+              0.3,
+              18.86,
+              16.22
+             ],
+             [
+              0.5,
+              18,
+              15.48
+             ],
+             [
+              1,
+              15.89,
+              13.68
+             ]
+            ],
+            "pre_tax_pct": 20.16,
+            "post_tax_pct": 17.33,
+            "tax_note": "по ставке 13%; льготы ИИС и долгосрочного владения не учтены",
+            "line": "Укажите комиссию вашего брокера, чтобы учесть её в доходности. Без неё: 20,16% до налога по графику выплат и 17,33% после налога 13%."
+           },
+           "worst": [
+            {
+             "id": "rates",
+             "title": "Рост ставок",
+             "text": "При росте ставок на 1 п.п. цена упадёт примерно на 0,2%, на 3 п.п. — на 0,7% (−13 680 ₽ на вашу позицию). Если держать до погашения 21.01.2027, убытка не будет.",
+             "loss_pct_1pp": 0.228,
+             "loss_pct_3pp": 0.684
+            },
+            {
+             "id": "default",
+             "title": "Дефолт эмитента",
+             "text": "В худшем случае можно потерять вложенное — до 2 000 000 ₽. Рынок оценивает кредитный риск эмитента как высокий.",
+             "loss_pct_1pp": null,
+             "loss_pct_3pp": null
+            }
+           ],
+           "flags": [
+            {
+             "id": 1,
+             "title": "Только для квалифицированных инвесторов",
+             "text": "Регулятор признал инструмент сложным для массового инвестора.",
+             "fired": false,
+             "points": 0,
+             "details": "ISQUALIFIEDINVESTORS = 0"
+            },
+            {
+             "id": 2,
+             "title": "Низкий уровень листинга",
+             "text": "Минимальные требования биржи к эмитенту по раскрытию информации.",
+             "fired": false,
+             "points": 0,
+             "details": "LISTLEVEL = 2"
+            },
+            {
+             "id": 3,
+             "title": "Высокая премия за риск",
+             "text": "Рынок оценивает кредитный риск эмитента как существенный.",
+             "fired": true,
+             "points": 20,
+             "details": "GSPREADBP = 860 б.п."
+            },
+            {
+             "id": 4,
+             "title": "Неликвидный выпуск",
+             "text": "Мало оборота или сделок — выйти из позиции сложно.",
+             "fired": false,
+             "points": 0,
+             "details": "за 20 дн.: 5,4 млн ₽/день, 249 сделок/день"
+            },
+            {
+             "id": 5,
+             "title": "Широкий спред",
+             "text": "Большая разница между ценой покупки и продажи — потеря при каждой сделке.",
+             "fired": false,
+             "points": 0,
+             "details": "спред 0,08%"
+            },
+            {
+             "id": 6,
+             "title": "Не торгуется",
+             "text": "Биржевых торгов нет — выйти через биржу нельзя.",
+             "fired": false,
+             "points": 0,
+             "details": "торгуется"
+            },
+            {
+             "id": 7,
+             "title": "Длинная дюрация",
+             "text": "Цена сильно реагирует на изменение ставок.",
+             "fired": false,
+             "points": 0,
+             "details": "DURATION = 0,3 г."
+            },
+            {
+             "id": 8,
+             "title": "Эмитент может погасить досрочно (call)",
+             "text": "Эмитент может погасить выпуск в выгодный для себя момент.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 9,
+             "title": "Ставка после оферты неизвестна",
+             "text": "После оферты ставку купона назначит эмитент.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 10,
+             "title": "Валютный риск",
+             "text": "Номинал не в рублях — к риску облигации добавляется курсовой.",
+             "fired": false,
+             "points": 0,
+             "details": "FACEUNIT = SUR"
+            },
+            {
+             "id": 11,
+             "title": "Плавающий купон",
+             "text": "Доход зависит от рыночной ставки и снизится вместе с ней.",
+             "fired": false,
+             "points": 0,
+             "details": "купон постоянный"
+            },
+            {
+             "id": 12,
+             "title": "Обещанная доходность выше реальной",
+             "text": "Вам обещали больше, чем бумага даёт на самом деле.",
+             "fired": false,
+             "points": 0,
+             "details": "заявленная не указана"
+            },
+            {
+             "id": 13,
+             "title": "Дефолт в истории выпуска",
+             "text": "По выпуску уже был дефолт или технический дефолт.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 14,
+             "title": "Структурный продукт",
+             "text": "Выплата зависит от базового актива или события, а не от купона — можно получить меньше номинала или только номинал.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            },
+            {
+             "id": 15,
+             "title": "Бессрочная",
+             "text": "Даты погашения нет — вернуть номинал можно только продажей на бирже или по решению эмитента о выкупе.",
+             "fired": false,
+             "points": 0,
+             "details": "нет"
+            }
+           ],
+           "truth_score": {
+            "score": 80,
+            "grade": "Есть оговорки",
+            "top3": [
+             3
+            ],
+            "more_count": 0,
+            "none_fired": false
+           },
+           "macro": null,
+           "panels": [
+            "data_line",
+            "product",
+            "yield",
+            "price_line",
+            "liquidity",
+            "fees",
+            "worst",
+            "flags_score",
+            "plaque"
+           ],
+           "inputs": {
+            "position_size": 2000000,
+            "k_pct": null,
+            "promised_pct": null,
+            "offer_price_pct": null
+           },
+           "diagnostics": {
+            "snapshot_dir": "/Users/zv/ТафсТендер/second-opinion/packages/engine/golden/snapshots/rolf",
+            "control_diff_pp": 0,
+            "warnings": []
+           }
+          }
+         }
+        }
+       },
+       {
+        "type": "text",
+        "text": "Учёл сумму 2 000 000 ₽. Пересчитал стоимость выхода и худший случай — смотрите блоки выше.",
+        "state": "done"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Проверь RU000A10ASE2 на 1 млн"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "4PcpofBAvpNsgip5"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  }
+ ]
+}
