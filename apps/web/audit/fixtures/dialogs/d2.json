@@ -1,0 +1,287 @@
+{
+ "id": "d2",
+ "title": "Черкизово: выбор выпуска, кнопка «Проверить» у кандидата 0",
+ "recorded": {
+  "commit": "d16c809",
+  "date": "2026-10-15",
+  "mode": "SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0",
+  "browser": "Chromium 141.0.7390.37",
+  "via": "playwright, реальный UI assistant-ui"
+ },
+ "actions": [
+  {
+   "kind": "type",
+   "text": "Черкизово"
+  },
+  {
+   "kind": "pick",
+   "index": 0
+  }
+ ],
+ "requests": [
+  {
+   "action": 0,
+   "headers": {
+    "content-type": "application/json",
+    "x-so-chat": "c_ohz9bkrcfa"
+   },
+   "headerNames": [
+    "accept",
+    "accept-language",
+    "content-type",
+    "origin",
+    "referer",
+    "sec-ch-ua",
+    "sec-ch-ua-mobile",
+    "sec-ch-ua-platform",
+    "user-agent",
+    "x-so-chat"
+   ],
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_W6C4B1O",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Черкизово"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "RsS8T4C7FclG2wj9"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  },
+  {
+   "action": 1,
+   "headers": {
+    "content-type": "application/json",
+    "x-so-chat": "c_ohz9bkrcfa"
+   },
+   "headerNames": [
+    "accept",
+    "accept-language",
+    "content-type",
+    "origin",
+    "referer",
+    "sec-ch-ua",
+    "sec-ch-ua-mobile",
+    "sec-ch-ua-platform",
+    "user-agent",
+    "x-so-chat"
+   ],
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_W6C4B1O",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Черкизово"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "RsS8T4C7FclG2wj9"
+     },
+     {
+      "id": "g4rqbvOfPtSUdf82",
+      "role": "assistant",
+      "parts": [
+       {
+        "type": "step-start"
+       },
+       {
+        "type": "tool-resolve_security",
+        "toolCallId": "call_35sfq9",
+        "state": "output-available",
+        "input": {
+         "query": "Черкизово"
+        },
+        "output": {
+         "query": "Черкизово",
+         "result": {
+          "kind": "pick",
+          "query": "Черкизово",
+          "note": "Уточните выпуск",
+          "candidates": [
+           {
+            "secid": "RU000A1094F2",
+            "isin": "RU000A1094F2",
+            "shortname": "ЧеркизБ1P7",
+            "regnumber": "4B02-07-10797-A-001P",
+            "is_traded": true,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A10G6Z1",
+            "isin": "RU000A10G6Z1",
+            "shortname": "ЧеркизБ2P6",
+            "regnumber": "4B02-06-10797-A-002P",
+            "is_traded": true,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A10B4V0",
+            "isin": "RU000A10B4V0",
+            "shortname": "ЧеркизБ2P1",
+            "regnumber": "4B02-01-10797-A-002P",
+            "is_traded": true,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A10FUU3",
+            "isin": "RU000A10FUU3",
+            "shortname": "ЧеркизБ2P5",
+            "regnumber": "4B02-05-10797-A-002P",
+            "is_traded": true,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A10C5F9",
+            "isin": "RU000A10C5F9",
+            "shortname": "ЧеркизБ2P2",
+            "regnumber": "4B02-02-10797-A-002P",
+            "is_traded": true,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A105M67",
+            "isin": "RU000A105M67",
+            "shortname": "ЧеркизБ1P6",
+            "regnumber": "4B02-06-10797-A-001P",
+            "is_traded": true,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A10FQ09",
+            "isin": "RU000A10FQ09",
+            "shortname": "ЧеркизБ2P3",
+            "regnumber": "4B02-03-10797-A-002P",
+            "is_traded": true,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A10FQE5",
+            "isin": "RU000A10FQE5",
+            "shortname": "ЧеркизБ2P4",
+            "regnumber": "4B02-04-10797-A-002P",
+            "is_traded": true,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A10B420",
+            "isin": "RU000A10B420",
+            "shortname": "ЧеркизБ1P8",
+            "regnumber": "4B02-08-10797-A-001P",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A1013Y3",
+            "isin": "RU000A1013Y3",
+            "shortname": "ЧеркизБ1P2",
+            "regnumber": "4B02-02-10797-A-001P",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A1024W4",
+            "isin": "RU000A1024W4",
+            "shortname": "ЧеркизБ1P3",
+            "regnumber": "4B02-03-10797-A-001P",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A102LD1",
+            "isin": "RU000A102LD1",
+            "shortname": "ЧеркизБ1P4",
+            "regnumber": "4B02-04-10797-A-001P",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A105C28",
+            "isin": "RU000A105C28",
+            "shortname": "ЧеркизБ1P5",
+            "regnumber": "4B02-05-10797-A-001P",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A0GTE88",
+            "isin": "RU000A0GTE88",
+            "shortname": "Черкизово1",
+            "regnumber": "4-01-10797-A",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A0JR4C7",
+            "isin": "RU000A0JR4C7",
+            "shortname": "ЧеркизБО3",
+            "regnumber": "4B02-03-10797-A",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A0JTU93",
+            "isin": "RU000A0JTU93",
+            "shortname": "ЧеркизБО4",
+            "regnumber": "4B02-04-10797-A",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           },
+           {
+            "secid": "RU000A0JVUJ0",
+            "isin": "RU000A0JVUJ0",
+            "shortname": "ЧеркизБ1P1",
+            "regnumber": "4B02-01-10797-A-001P",
+            "is_traded": false,
+            "emitent_title": "Публичное акционерное общество \"Группа Черкизово\""
+           }
+          ]
+         }
+        }
+       },
+       {
+        "type": "step-start"
+       },
+       {
+        "type": "text",
+        "text": "Нашлось несколько выпусков — выберите нужный в списке выше или уточните запрос.",
+        "state": "done"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Проверь RU000A1094F2"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "UqFKsuVdnEr2R1BA"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  }
+ ]
+}

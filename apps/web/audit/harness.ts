@@ -14,8 +14,9 @@ import { checks as UG } from "./checks/wp-u-gate";
 import { checks as UU } from "./checks/wp-u-ui";
 import { checks as UGG } from "./checks/wp-u-guards-g";
 import { checks as UGK } from "./checks/wp-u-guards-k";
+import { checks as TG } from "./checks/wp-tg";
 
-const ALL: Check[] = [...H, ...D, ...R, ...S, ...UG, ...UU, ...UGG, ...UGK];
+const ALL: Check[] = [...H, ...D, ...R, ...S, ...UG, ...UU, ...UGG, ...UGK, ...TG];
 const here = path.dirname(fileURLToPath(import.meta.url));
 const BASELINE = path.join(here, "baseline.json");
 

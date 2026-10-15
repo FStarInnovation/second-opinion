@@ -1,0 +1,143 @@
+{
+ "id": "d4",
+ "title": "ISIN не найден на Мосбирже, затем просьба о совете",
+ "recorded": {
+  "commit": "d16c809",
+  "date": "2026-10-15",
+  "mode": "SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0",
+  "browser": "Chromium 141.0.7390.37",
+  "via": "playwright, реальный UI assistant-ui"
+ },
+ "actions": [
+  {
+   "kind": "type",
+   "text": "RU000A10E2A5"
+  },
+  {
+   "kind": "type",
+   "text": "предложи ты бумагу"
+  }
+ ],
+ "requests": [
+  {
+   "action": 0,
+   "headers": {
+    "content-type": "application/json",
+    "x-so-chat": "c_o99n2wp61n"
+   },
+   "headerNames": [
+    "accept",
+    "accept-language",
+    "content-type",
+    "origin",
+    "referer",
+    "sec-ch-ua",
+    "sec-ch-ua-mobile",
+    "sec-ch-ua-platform",
+    "user-agent",
+    "x-so-chat"
+   ],
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_zCcQEBm",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "RU000A10E2A5"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "2ZczEn2X7f7aRozu"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  },
+  {
+   "action": 1,
+   "headers": {
+    "content-type": "application/json",
+    "x-so-chat": "c_o99n2wp61n"
+   },
+   "headerNames": [
+    "accept",
+    "accept-language",
+    "content-type",
+    "origin",
+    "referer",
+    "sec-ch-ua",
+    "sec-ch-ua-mobile",
+    "sec-ch-ua-platform",
+    "user-agent",
+    "x-so-chat"
+   ],
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_zCcQEBm",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "RU000A10E2A5"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "2ZczEn2X7f7aRozu"
+     },
+     {
+      "id": "VXotxPEAA5nMeJJI",
+      "role": "assistant",
+      "parts": [
+       {
+        "type": "tool-resolve_security",
+        "toolCallId": "gate_peod9n4e",
+        "state": "output-available",
+        "input": {
+         "query": "RU000A10E2A5"
+        },
+        "output": {
+         "query": "RU000A10E2A5",
+         "result": {
+          "kind": "notfound",
+          "query": "RU000A10E2A5",
+          "isinValid": true
+         }
+        }
+       },
+       {
+        "type": "text",
+        "text": "ISIN корректный, но на Мосбирже бумага не торгуется — внебиржевой или погашенный выпуск. Такие мы пока не проверяем.",
+        "state": "done"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "предложи ты бумагу"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "nfDF5EylAHdlBlvB"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  }
+ ]
+}

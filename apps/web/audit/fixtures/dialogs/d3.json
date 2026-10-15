@@ -1,0 +1,141 @@
+{
+ "id": "d3",
+ "title": "Вход с главной (/chat?m=…): термин «дюрация», затем «а купон?»",
+ "recorded": {
+  "commit": "d16c809",
+  "date": "2026-10-15",
+  "mode": "SO_OFFLINE=1 MOCK_LLM=1 JEV_ENABLED=0",
+  "browser": "Chromium 141.0.7390.37",
+  "via": "playwright, реальный UI assistant-ui"
+ },
+ "actions": [
+  {
+   "kind": "open",
+   "url": "/chat?m=Что такое дюрация?"
+  },
+  {
+   "kind": "type",
+   "text": "а купон?"
+  }
+ ],
+ "requests": [
+  {
+   "action": 0,
+   "headers": {
+    "content-type": "application/json",
+    "x-so-chat": "c_v5vh98w9ae"
+   },
+   "headerNames": [
+    "accept",
+    "accept-language",
+    "content-type",
+    "origin",
+    "referer",
+    "sec-ch-ua",
+    "sec-ch-ua-mobile",
+    "sec-ch-ua-platform",
+    "user-agent",
+    "x-so-chat"
+   ],
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_0Y8ZbPU",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Что такое дюрация?"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "L2Pjllk35qOEHoYQ"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  },
+  {
+   "action": 1,
+   "headers": {
+    "content-type": "application/json",
+    "x-so-chat": "c_v5vh98w9ae"
+   },
+   "headerNames": [
+    "accept",
+    "accept-language",
+    "content-type",
+    "origin",
+    "referer",
+    "sec-ch-ua",
+    "sec-ch-ua-mobile",
+    "sec-ch-ua-platform",
+    "user-agent",
+    "x-so-chat"
+   ],
+   "body": {
+    "tools": {},
+    "id": "__LOCALID_0Y8ZbPU",
+    "messages": [
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "Что такое дюрация?"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "L2Pjllk35qOEHoYQ"
+     },
+     {
+      "id": "h6f8lLXbUb32bK3i",
+      "role": "assistant",
+      "parts": [
+       {
+        "type": "tool-explain_term",
+        "toolCallId": "gate_1p2rw914",
+        "state": "output-available",
+        "input": {
+         "term": "Что такое дюрация?"
+        },
+        "output": {
+         "found": true,
+         "id": "duration",
+         "title": "Дюрация",
+         "text": "Средневзвешенный срок в годах, через который к вам возвращаются деньги по облигации — купонами и погашением. Дюрация, делённая на 1 + доходность (в долях), показывает, на сколько процентов примерно упадёт цена, если ставки вырастут на один процентный пункт. Чем дальше погашение и меньше купон, тем дюрация больше."
+        }
+       },
+       {
+        "type": "text",
+        "text": "Если нужно — спросите про другой термин или назовите бумагу, соберу отчёт.",
+        "state": "done"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "parts": [
+       {
+        "type": "text",
+        "text": "а купон?"
+       }
+      ],
+      "metadata": {
+       "custom": {}
+      },
+      "id": "pKwcxrDWsKovmtWr"
+     }
+    ],
+    "trigger": "submit-message",
+    "metadata": {}
+   }
+  }
+ ]
+}
