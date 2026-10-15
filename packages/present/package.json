@@ -1,0 +1,23 @@
+{
+  "name": "@so/present",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Протокол, вход, тексты каналов и view-model отчёта Second opinion: чистый TS без React, Node и ai — общий для сайта и Telegram-бота",
+  "exports": {
+    "./protocol": "./src/protocol.ts",
+    "./entry": "./src/entry.ts",
+    "./copy": "./src/copy.ts",
+    "./report": "./src/report.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@so/engine": "0.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

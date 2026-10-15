@@ -20,6 +20,7 @@
     "@openrouter/ai-sdk-provider": "3.1.0",
     "@so/blocks": "0.1.0",
     "@so/engine": "0.1.0",
+    "@so/present": "0.1.0",
     "ai": "7.0.133",
     "next": "16.4.0",
     "react": "19.2.8",
