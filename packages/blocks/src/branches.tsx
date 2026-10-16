@@ -1,17 +1,17 @@
 "use client";
 /**
  * Ветки распознавания 2.3.0: «Уточните выпуск» (pick), «Не нашли» (notfound), ошибка ввода (err).
- * Рисуются из конверта BuildResult движка; фактов в шаблоне нет.
+ * Рисуются из конверта BuildResult движка; фактов в шаблоне нет. Тексты — из view-model ветки (presentBranch, @so/present/report),
+ * литералы кнопок и подписей таблицы — WEB (@so/present/copy).
  */
 import type { BuildResultT } from "@so/engine/contract";
-import { BackIcon, SearchIcon } from "./ui";
+import { WEB } from "@so/present/copy";
+import { presentBranch } from "@so/present/report";
+import { BackIcon, SearchIcon, splitFirst } from "./ui";
 
 type Pick = Extract<BuildResultT, { kind: "pick" }>;
 type NotFound = Extract<BuildResultT, { kind: "notfound" }>;
 type Err = Extract<BuildResultT, { kind: "err" }>;
-
-const variantWord = (n: number) =>
-  n % 10 === 1 && n % 100 !== 11 ? "выпуск" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "выпуска" : "выпусков";
 
 export function PickView({ res, hrefFor, newCheckHref, onPick, compact }: {
   res: Pick;
@@ -23,62 +23,68 @@ export function PickView({ res, hrefFor, newCheckHref, onPick, compact }: {
   /** В чате кнопка «Новая проверка» не нужна: выбор и новый запрос — в том же диалоге. */
   compact?: boolean;
 }) {
+  const vm = presentBranch(res);
+  const [found, order] = vm.lines;
   return (
     <div className="so-main so-main--narrow" data-branch="pick">
-      {!compact ? <a className="btn btn-ghost" href={newCheckHref ?? "./"}><BackIcon />Новая проверка</a> : null}
+      {!compact ? <a className="btn btn-ghost" href={newCheckHref ?? "./"}><BackIcon />{WEB.newCheck}</a> : null}
       <div className="so-title">
-        <h1 className="so-h1">Уточните выпуск</h1>
-        <p className="text">
-          По запросу «{res.query}» нашли {res.candidates.length} {variantWord(res.candidates.length)}. Выберите нужный.
-        </p>
+        <h1 className="so-h1">{vm.title}</h1>
+        <p className="text">{found}</p>
       </div>
-      <section className="card pick" aria-label="Найденные выпуски" data-block="pick">
+      <section className="card pick" aria-label={WEB.pickAria} data-block="pick">
         <div className="pick__row pick__head" aria-hidden="true">
-          <span className="pick__name">Выпуск и ISIN</span><span className="pick__reg">Рег. номер</span>
-          <span className="pick__st">Торги</span><span className="pick__act" />
+          <span className="pick__name">{WEB.pickHeadName}</span><span className="pick__reg">{WEB.pickHeadReg}</span>
+          <span className="pick__st">{WEB.pickHeadTrading}</span><span className="pick__act" />
         </div>
-        {res.candidates.map((c) => {
+        {res.candidates.map((c, i) => {
+          const o = vm.options[i];
           const href = hrefFor ? hrefFor(c.secid) : null;
           return (
             <div key={c.secid} className="pick__row" data-secid={c.secid}>
-              <span className="pick__name"><b>{c.shortname}</b><span className="mono cap">{c.isin ?? c.secid}</span></span>
-              <span className="pick__reg mono cap">{c.regnumber ?? "—"}</span>
-              <span className={"pick__st " + (c.is_traded ? "" : "pick__muted")}>{c.is_traded ? "торгуется" : "не торгуется"}</span>
+              <span className="pick__name"><b>{o.label}</b><span className="mono cap">{o.sub}</span></span>
+              <span className="pick__reg mono cap">{o.reg}</span>
+              <span className={"pick__st " + (o.traded ? "" : "pick__muted")}>{o.trading}</span>
               <span className="pick__act">
                 {href ? (
-                  <a className="btn btn-outline" href={href} style={{ width: "100%" }}>Проверить</a>
+                  <a className="btn btn-outline" href={href} style={{ width: "100%" }}>{WEB.pickCheck}</a>
                 ) : (
                   <button type="button" className="btn btn-outline" style={{ width: "100%" }} disabled={!onPick}
-                    onClick={() => onPick?.(c.secid)}>Проверить</button>
+                    onClick={() => onPick?.(c.secid)}>{WEB.pickCheck}</button>
                 )}
               </span>
             </div>
           );
         })}
       </section>
-      <p className="cap">Сначала торгуемые. Данные Мосбиржи.</p>
+      <p className="cap">{order}</p>
     </div>
   );
 }
 
 /** compact — в чате: ссылки «Проверить ISIN» на главную нет, новый запрос пишут в тот же диалог (сумма и комиссия сессии сохраняются). */
 export function NotFoundView({ res, newCheckHref, compact }: { res: NotFound; newCheckHref?: string; compact?: boolean }) {
+  const vm = presentBranch(res);
+  // строки VM: «Искали: <запрос>», пояснения (необязательные), сноска о документе продавца — последней
+  const [searched, query] = splitFirst(vm.lines[0] ?? "");
+  const notes = vm.lines.slice(1, -1);
+  const doc = vm.lines.length > 1 ? vm.lines[vm.lines.length - 1] : null;
   return (
     <div className="so-main so-main--tiny" data-branch="notfound">
       <section className="card so-404" data-block="notfound" aria-labelledby="h-404">
         <span className="so-404__icon"><SearchIcon /></span>
         <div className="stack" style={{ gap: 8 }}>
-          <h1 id="h-404" style={{ fontSize: 28, lineHeight: 1.2, fontWeight: 700, letterSpacing: "-0.02em" }}>Не нашли бумагу на Мосбирже</h1>
-          <p className="text">Искали: <strong className="mono" style={{ color: "#0f172a", wordBreak: "break-all" }}>{res.query}</strong></p>
-          {res.isinValid ? (
-            <p className="text">Бумага не торгуется на Мосбирже — внебиржевой или погашенный выпуск. Такие мы пока не проверяем.</p>
-          ) : null}
+          <h1 id="h-404" style={{ fontSize: 28, lineHeight: 1.2, fontWeight: 700, letterSpacing: "-0.02em" }}>{vm.title}</h1>
+          <p className="text">{searched + " "}<strong className="mono" style={{ color: "#0f172a", wordBreak: "break-all" }}>{query}</strong></p>
+          {notes.map((t) => (
+            <p key={t} className="text">{t}</p>
+          ))}
         </div>
         <div className="row-btns">
-          {!compact ? <a className="btn btn-primary btn-lg" href={newCheckHref ?? "./"}>Проверить ISIN</a> : null}
-          <button type="button" className="btn btn-outline btn-lg" disabled title="Вход файлом — после MVP">Загрузить документ продавца</button>
+          {!compact ? <a className="btn btn-primary btn-lg" href={newCheckHref ?? "./"}>{WEB.checkIsin}</a> : null}
+          <button type="button" className="btn btn-outline btn-lg" disabled title={WEB.uploadDocTitle}>{WEB.uploadDoc}</button>
         </div>
-        <p className="cap">Проверка по документу продавца появится после запуска шлюза обезличивания.</p>
+        <p className="cap">{doc}</p>
       </section>
     </div>
   );
@@ -86,12 +92,13 @@ export function NotFoundView({ res, newCheckHref, compact }: { res: NotFound; ne
 
 /** compact — в чате: без кнопки «Новая проверка» на главную, повторить запрос можно в том же диалоге. */
 export function ErrView({ res, newCheckHref, compact }: { res: Err; newCheckHref?: string; compact?: boolean }) {
+  const vm = presentBranch(res);
   return (
     <div className="so-main so-main--tiny" data-branch="err">
       <section className="card so-404" data-block="err">
-        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Не получилось проверить бумагу</h1>
-        <p className="text">{res.msg}</p>
-        {!compact ? <a className="btn btn-primary btn-lg" href={newCheckHref ?? "./"}>Новая проверка</a> : null}
+        <h1 style={{ fontSize: 24, fontWeight: 700 }}>{vm.title}</h1>
+        <p className="text">{vm.lines[0]}</p>
+        {!compact ? <a className="btn btn-primary btn-lg" href={newCheckHref ?? "./"}>{WEB.newCheck}</a> : null}
       </section>
     </div>
   );

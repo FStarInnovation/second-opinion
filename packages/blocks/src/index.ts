@@ -4,6 +4,7 @@
  */
 import type { ComponentType } from "react";
 import type { BondReportT, PanelIdT } from "@so/engine/contract";
+import { CABINET_HREF } from "@so/present/protocol";
 import {
   AskPrice, Claim, DataLine, Fees, FlagsScore, Liquidity, Macro, Plaque, PriceLine, Product, Worst, Yield,
 } from "./blocks";
@@ -12,7 +13,8 @@ export * from "./blocks";
 export * from "./ReportView";
 export * from "./branches";
 export * from "./app";
-export { Bars, BrandMark, scoreTone, liquidityTone } from "./ui";
+export { Bars, BrandMark } from "./ui";
+export { scoreTone, liquidityTone } from "@so/present/report";
 
 /** Реестр: id панели → компонент. Plaque не зависит от контракта (статичный текст П23). */
 export const BLOCKS: Record<PanelIdT, ComponentType<{ r: BondReportT }>> = {
@@ -27,5 +29,5 @@ export const BLOCKS: Record<PanelIdT, ComponentType<{ r: BondReportT }>> = {
   worst: Worst,
   flags_score: FlagsScore,
   macro: Macro,
-  plaque: () => Plaque({ cabinetHref: "https://vfo.autremus.com" }),
+  plaque: () => Plaque({ cabinetHref: CABINET_HREF }),
 };
