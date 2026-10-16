@@ -132,6 +132,11 @@ export interface ReportVM { dataTime: string | null; kicker: string; name: strin
   sections: SectionVM[]; plaque: { title: string; items: string[] } | null }
 export function presentReport(r: BondReportT, o?: { askPriceNote?: string }): ReportVM; // секции — по раскладке ReportView, только из r.panels;
 //   askPriceNote в vmStrings не входит (показывается только после submit, blocks.tsx:111,128)
+//   Решение оркестратора 16.10 (по итогам P2): SectionVM.note?: string — askPriceNote секции ask_price (в vmStrings не входит;
+//   бот note не выводит и askPriceNote не передаёт). Для сайта @so/present/report дополнительно экспортирует presentSection,
+//   presentPlaque, presentDataTime, yieldBars, yieldVariant, типы SectionId/PickVM/YieldBar/YieldVariant и перегрузку
+//   presentBranch(pick): PickVM — блоки получают только { r }. Раскладка строк секций — шапка packages/present/src/report.ts;
+//   секции «Доходность» после первой идут с пустым title (продолжение карточки) — рендер пустой заголовок пропускает.
 export type BranchVM =
   | { kind: "pick"; title: string; lines: string[];
       options: { label: string; sub: string; reg: string; trading: string; message: string; traded: boolean }[] }
@@ -194,7 +199,7 @@ export function channelOf(req: Request, sessionId: string): { ok: true; channel:
 - Больше `channel` в сервере нигде не появляется (TG.G3: lib-модули и статическая часть по `route.ts`).
 
 **Остальные файлы:**
-- `health/route.ts`: в локальный ответ добавляется `version` — содержимое `<repo>/VERSION`, его пишет `deploy.sh`; если файла нет — `"dev"`. Наружу по-прежнему только `{ok}`. VERSION читается один раз, константой на уровне модуля (в Next 16 модуль грузится при старте процесса, `preloadEntriesOnStart`); внутри `GET` файл не читается. Иначе сервер и бот читают один и тот же файл, который `deploy.sh` пишет до рестарта, и сверка версий ничего не проверяет. Путь = `${process.env.SO_APP_DIR ?? path.resolve(process.cwd(), "../..")}/VERSION` (на проде cwd = `$APP_DIR/apps/web`, `setup.sh:122`); харнес задаёт `SO_APP_DIR` (TG.23).
+- `health/route.ts`: в локальный ответ добавляется `version` — содержимое `<repo>/VERSION` после trim (пустое — `"dev"`; `deploy.sh` пишет файл с переводом строки), его пишет `deploy.sh`; если файла нет — `"dev"`. Наружу по-прежнему только `{ok}`. VERSION читается один раз, константой на уровне модуля (в Next 16 модуль маршрута грузится лениво, при первом запросе к `/api/health`, поэтому `deploy.sh` обращается к нему сразу после рестарта); внутри `GET` файл не читается. Иначе сервер и бот читают один и тот же файл, который `deploy.sh` пишет до рестарта, и сверка версий ничего не проверяет. Путь = `${process.env.SO_APP_DIR ?? path.resolve(process.cwd(), "../..")}/VERSION` (на проде cwd = `$APP_DIR/apps/web`, `setup.sh:122`); харнес задаёт `SO_APP_DIR` (TG.23).
 - `session.ts`: TTL берётся из `SESSION_TTL_MS`.
 - `budget.ts`: `BUDGET_EXHAUSTED_TEXT = budgetExhaustedText("web")`.
 - `prompt.ts:11` и `prompt.ts:20` (правило 10, «ниже» → «меньше») — нейтральные слова (§3, решение 6).
@@ -331,7 +336,7 @@ export function makeHeartbeat(o: { file: string; staleMs: number; now(): number;
   write(file: string): void; mtime(file: string): number | null }): { beat(): void; check(): void };
 
 // version.ts
-export function readVersion(appDir: string): string;                 // <appDir>/VERSION или "dev"
+export function readVersion(appDir: string): string;                 // <appDir>/VERSION после trim; нет файла или пусто — "dev" (как health, §4.3)
 export function checkServerVersion(f: typeof fetch, webUrl: string, mine: string): Promise<{ ok: boolean; server: string | null }>;
 ```
 
