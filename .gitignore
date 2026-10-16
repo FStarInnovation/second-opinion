@@ -11,3 +11,5 @@ apps/web/next-env.d.ts
 *.tsbuildinfo
 apps/web/.usage/
 .DS_Store
+apps/bot/.state/
+/VERSION

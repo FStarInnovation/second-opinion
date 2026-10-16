@@ -931,7 +931,8 @@ async function configUnit(): Promise<{ ok: boolean; detail: string }> {
   const root = ok1.cfg?.apiRoot?.replace(/\/$/, "");
   if (ok1.err) issues.push(`TG_API_ROOT=http://127.0.0.1:8081 отклонён: «${ok1.err.slice(0, 120)}»`);
   else if (root !== "http://127.0.0.1:8081") issues.push(`TG_API_ROOT=http://127.0.0.1:8081 → apiRoot=${JSON.stringify(ok1.cfg?.apiRoot)}`);
-  for (const v of ["https://evil.example", "http://10.0.0.1:1", "http://user@127.0.0.1:1"]) {
+  // без явного порта (§4.4 «явный порт») — тоже отказ
+  for (const v of ["https://evil.example", "http://10.0.0.1:1", "http://user@127.0.0.1:1", "http://127.0.0.1", "http://localhost"]) {
     const r = await tryLoad({ ...base, TG_API_ROOT: v });
     if (!r.err) issues.push(`TG_API_ROOT=${v} принят (apiRoot=${JSON.stringify(r.cfg?.apiRoot)})`);
     else { const l = leak(r.err, v); if (l) issues.push(`TG_API_ROOT=${v}: в тексте ошибки ${l}`); }
@@ -939,7 +940,7 @@ async function configUnit(): Promise<{ ok: boolean; detail: string }> {
   const pr = await tryLoad({ ...base, NODE_ENV: "production", TG_API_ROOT: "http://127.0.0.1:8081" });
   if (!pr.err) issues.push("NODE_ENV=production и TG_API_ROOT заданы — ошибки нет");
   else { const l = leak(pr.err); if (l) issues.push(`NODE_ENV=production: в тексте ошибки ${l}`); }
-  return { ok: issues.length === 0, detail: `loadConfig: ${issues.length ? issues.join("; ") : "127.0.0.1:8081 принят; evil.example, 10.0.0.1, user@ отклонены; production + TG_API_ROOT → ошибка; токена в ошибках нет"}` };
+  return { ok: issues.length === 0, detail: `loadConfig: ${issues.length ? issues.join("; ") : "127.0.0.1:8081 принят; evil.example, 10.0.0.1, user@ отклонены; без порта отклонён (127.0.0.1, localhost); production + TG_API_ROOT → ошибка; токена в ошибках нет"}` };
 }
 
 async function heartbeatUnit(): Promise<{ ok: boolean; detail: string }> {

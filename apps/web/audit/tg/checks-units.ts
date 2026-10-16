@@ -23,6 +23,7 @@
 import { createHmac } from "node:crypto";
 import { UI_MESSAGE_STREAM_HEADERS } from "ai";
 import { fail, pass, type Check, type Verdict } from "../lib";
+import { afterTurnIssues, trackBotTimers, type BotTimers } from "./bot-timers";
 import { guardRun, withGuard, type GuardWindow } from "./guard";
 import { entryParamsOf, lastUserText, loadDialog, loadDialogs, UpdateFactory, type RawUpdate } from "./actions";
 import { FakeHttpError, FakeTg, tgError, type TgCall, type TgFakeError } from "./fake-tg";
@@ -922,6 +923,24 @@ export function makeUnitChecks(L: UnitLoaders = REPO_LOADERS): Check[] {
             probs.push(`контроль: та же кнопка после хода должна дать POST с репликой «Проверь RU000A1094F2»; POST ${r.srv.posts.length}, реплика ${q(p2?.lastUser)}`);
           subs.push(sub("кнопка pk: во время хода → answerCallbackQuery(BOT.busy) без POST (после хода — POST «Проверь …»)", !probs.length, probs.join("; ")));
         }
+        // (10б) два нажатия одной пачкой getUpdates (main.ts зовёт handleUpdate без await) → 1 POST, второму — answerCallbackQuery(BOT.busy)
+        {
+          const r = mkRig({ core }, { firstUpdateId: 670_000_001 });
+          const A = 7000000322;
+          const cb1 = r.f.callback(A, "pk:RU000A1094F2", { messageId: 1001, text: "Уточните выпуск" });
+          const cb2 = r.f.callback(A, "pk:RU000A1094F2", { messageId: 1001, text: "Уточните выпуск" });
+          const id2 = cb2.callback_query?.id ?? "";
+          const hs = await within(Promise.all([r.core.handleUpdate(cb1 as TgUpdate), r.core.handleUpdate(cb2 as TgUpdate)]), HANDLE_MS);
+          const idle = await within(r.core.idle(), HANDLE_MS);
+          const ans2 = r.tg.calls.find((c): c is Extract<TgCall, { method: "answerCallbackQuery" }> => c.method === "answerCallbackQuery" && c.callbackId === id2);
+          const probs: string[] = [];
+          if (!hs.ok) probs.push(`handleUpdate ${whyNot(hs, HANDLE_MS)}`);
+          if (!idle.ok) probs.push(`idle() ${whyNot(idle, HANDLE_MS)}`);
+          if (r.srv.posts.length !== 1) probs.push(`POST: ${r.srv.posts.length} (${brief(r.srv.posts.map((p) => p.lastUser))}), ожидался 1 — второе нажатие прошло проверку «ход идёт» до того, как первое заняло чат`);
+          if (!ans2) probs.push(`на второе нажатие нет answerCallbackQuery; вызовы: ${r.tg.summary()}`);
+          else if (ans2.text !== BUSY) probs.push(`второе нажатие: answerCallbackQuery(${q(ans2.text ?? "без текста")}), ожидался BOT.busy ${q(BUSY)}`);
+          subs.push(sub("два нажатия кнопки одной пачкой (handleUpdate без await между ними) → 1 POST, второму answerCallbackQuery(BOT.busy)", !probs.length, probs.join("; ")));
+        }
         return subs;
       })();
       subs.push(...(await w.settle())); // unhandledRejection, исключения вне await, глобальный fetch, process.exit — пунктами проверки
@@ -938,6 +957,9 @@ export function makeUnitChecks(L: UnitLoaders = REPO_LOADERS): Check[] {
       if (!m.ok) return fail(`бота нет: ${m.detail}`);
       const { core, copy } = m.mods;
       const { serviceRestarting: RESTART, turnFailed: FAILED } = copy.BOT;
+      // таймеры кода бота на время кейсов: после хода живых нет, typing не переживает ход (bot-timers.ts)
+      const timers: BotTimers = trackBotTimers();
+      const afterTurn = (r: Rig) => afterTurnIssues(timers, () => r.tg.calls);
       const subs = await (async (): Promise<Sub[]> => {
         const subs: Sub[] = [];
         if (!RESTART || !FAILED || RESTART === FAILED)
@@ -957,7 +979,8 @@ export function makeUnitChecks(L: UnitLoaders = REPO_LOADERS): Check[] {
           if (uniq(r.srv.posts.map((p) => p.raw)).length > 1) probs.push(`повторный POST несёт другое тело: ${diff(r.srv.posts[0]?.body, r.srv.posts.at(-1)?.body, { labels: ["POST 1", "последний POST"] })}`);
           if (!sentTexts(r.tg, A).some((t) => t.includes(OK))) probs.push(`ответ ${q(OK)} не доставлен; вызовы Telegram: ${r.tg.summary()}`);
           if (sentExactly(r.tg, A, RESTART) || sentExactly(r.tg, A, FAILED)) probs.push(`после успешного повтора пользователь получил сообщение об ошибке; вызовы: ${r.tg.summary()}`);
-          subs.push(sub("два отказа ECONNREFUSED (в cause.code), затем ответ → 3 POST, паузы 2 и 8 с, ответ доставлен", !probs.length, probs.join("; ")));
+          probs.push(...(await afterTurn(r)));
+          subs.push(sub("два отказа ECONNREFUSED (в cause.code), затем ответ → 3 POST, паузы 2 и 8 с, ответ доставлен; после хода таймеров бота нет", !probs.length, probs.join("; ")));
         }
         // (2) всегда ECONNREFUSED (code на ошибке) → 4 POST, BOT.serviceRestarting, реплики в истории нет
         {
@@ -981,7 +1004,8 @@ export function makeUnitChecks(L: UnitLoaders = REPO_LOADERS): Check[] {
           else if (!p) probs.push(`следующее сообщение не дало POST (всего ${r.srv.posts.length})`);
           else if (userTexts(p.body).includes(T1)) probs.push(`в теле следующего хода снова реплика ${q(T1)}: ${brief(userTexts(p.body))} — она не убрана из истории`);
           else if (!userTexts(p.body).includes(T2)) probs.push(`в теле следующего хода нет новой реплики ${q(T2)}: ${brief(userTexts(p.body))}`);
-          subs.push(sub("ECONNREFUSED всегда (code на ошибке) → 4 POST, паузы 2/8/20 с, BOT.serviceRestarting, реплики в истории нет", !probs.length, probs.join("; ")));
+          probs.push(...(await afterTurn(r)));
+          subs.push(sub("ECONNREFUSED всегда (code на ошибке) → 4 POST, паузы 2/8/20 с, BOT.serviceRestarting, реплики в истории нет; после хода таймеров бота нет", !probs.length, probs.join("; ")));
         }
         // (3)–(5) HTTP 500, обрыв потока, таймаут → 1 POST, BOT.turnFailed, реплика остаётся в истории (§4.4, как AbstractChat)
         const oneShot = async (name: string, chatId: number, upd0: number, respond: Responder, config: Partial<BotConfig> = {}) => {
@@ -999,7 +1023,8 @@ export function makeUnitChecks(L: UnitLoaders = REPO_LOADERS): Check[] {
           if (e2) probs.push(`следующее сообщение: ${e2}`);
           else if (!p) probs.push(`следующее сообщение не дало POST`);
           else if (!userTexts(p.body).includes(T1)) probs.push(`в теле следующего хода нет реплики неудачного хода ${q(T1)} (${brief(userTexts(p.body))}) — она должна остаться в истории (§4.4)`);
-          return sub(`${name} → 1 POST, BOT.turnFailed, реплика остаётся в истории`, !probs.length, probs.join("; "));
+          probs.push(...(await afterTurn(r)));
+          return sub(`${name} → 1 POST, BOT.turnFailed, реплика остаётся в истории; после хода таймеров бота нет`, !probs.length, probs.join("; "));
         };
         subs.push(await oneShot("HTTP 500", 7000000403, 730_000_001, () => new Response("Internal Server Error", { status: 500 })));
         subs.push(await oneShot("обрыв потока после 4 чанков", 7000000404, 740_000_001, () => sseResponse(textChunks("начало ответа, затем обрыв"), { breakAfter: 4 })));
@@ -1016,10 +1041,11 @@ export function makeUnitChecks(L: UnitLoaders = REPO_LOADERS): Check[] {
           if (r.srv.posts.length !== 1) probs.push(`POST: ${r.srv.posts.length}, ожидался 1 — повтор только при ECONNREFUSED, а здесь ECONNRESET`);
           if (pauses(r).length) probs.push(`были паузы повтора ${brief(pauses(r))}`);
           if (!told) probs.push(`пользователь не получил сообщения о сбое; вызовы: ${r.tg.summary()}`);
-          subs.push(sub("ECONNRESET (не ECONNREFUSED) → 1 POST, без пауз", !probs.length, probs.join("; ")));
+          probs.push(...(await afterTurn(r)));
+          subs.push(sub("ECONNRESET (не ECONNREFUSED) → 1 POST, без пауз; после хода таймеров бота нет", !probs.length, probs.join("; ")));
         }
         return subs;
-      })();
+      })().finally(() => { timers.restore(); });
       subs.push(...(await w.settle())); // unhandledRejection, исключения вне await, глобальный fetch, process.exit — пунктами проверки
       return verdict(subs);
     }),
@@ -1122,6 +1148,11 @@ export function makeUnitChecks(L: UnitLoaders = REPO_LOADERS): Check[] {
         if (!veb) throw new Error("дефект харнеса: нет golden veb");
         const MARK = "Отчёт выше (маркер TG.18)";
         const delivery = async (name: string, chatId: number, upd0: number, inject: (tg: FakeTg) => void, extra: (r: Rig, turnFrom: number, turnTo: number) => string[]) => {
+          // таймеры кода бота на время кейса: после хода живых нет, typing не переживает ход (bot-timers.ts)
+          const timers = trackBotTimers();
+          try { return await deliveryCase(timers, name, chatId, upd0, inject, extra); } finally { timers.restore(); }
+        };
+        const deliveryCase = async (timers: BotTimers, name: string, chatId: number, upd0: number, inject: (tg: FakeTg) => void, extra: (r: Rig, turnFrom: number, turnTo: number) => string[]) => {
           const r = mkRig({ core, telegram, log }, { respond: () => sseResponse(reportChunks("ВЭБ.РФ 21", veb, MARK)), firstUpdateId: upd0 });
           inject(r.tg);
           const probs: string[] = [];
@@ -1144,7 +1175,8 @@ export function makeUnitChecks(L: UnitLoaders = REPO_LOADERS): Check[] {
           if (e2) probs.push(`следующий ход: ${e2}`);
           else if (r.srv.posts.length - before !== 1) probs.push(`следующий ход дал POST: ${r.srv.posts.length - before}, ожидался ровно 1`);
           else if (!hasAssistantText(p?.body ?? null, MARK)) probs.push(`тело следующего хода без ассистентского сообщения прошлого хода (${q(MARK)}): ошибка доставки откатила историю (§4.4: ответ пишется в историю до доставки)`);
-          return sub(name, !probs.length, probs.join("; "));
+          probs.push(...(await afterTurnIssues(timers, () => r.tg.calls)));
+          return sub(`${name}; после хода таймеров бота нет`, !probs.length, probs.join("; "));
         };
         subs.push(await delivery("403 «bot was blocked by the user» на sendMessage → оставшиеся сообщения хода не отправляются", 7000000511, 810_000_001,
           (tg) => tg.inject({ method: "sendMessage", error: () => E.api(403, "Forbidden: bot was blocked by the user", undefined, "sendMessage"), times: 1 }),
