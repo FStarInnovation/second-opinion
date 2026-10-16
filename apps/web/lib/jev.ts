@@ -31,13 +31,16 @@ export const PROMISE_KINDS = {
 } as const;
 export type PromiseKind = keyof typeof PROMISE_KINDS;
 
+/** Расход одного вызова Jev: токены входа и cost провайдера (если отдал) — маршрут чата списывает его в дневной бюджет */
+export interface JevUsage { inputTokens?: number; cost?: number }
+
 export interface RouteDecision {
   intent: Intent;
   confidence: number;
   probabilities: Partial<Record<Intent, number>>;
   mentionsSecurity: number; // Noul: есть ли в тексте идентификатор бумаги
   source: "jev" | "rules";
-  usage?: { inputTokens?: number; cost?: number };
+  usage?: JevUsage;  // расход вызова Jev, если он был: при source jev и при негодном ответе Jev (решение правил, вызов оплачен)
   jevError?: string; // источник rules при включённом Jev: почему не Jev (HTTP-код, таймаут) — без ключа
 }
 
@@ -47,6 +50,7 @@ export interface PromiseDecision {
   value: number | null;        // число из текста
   annualized: number | null;   // что подставлять в promised_pct (годовые) — null, если нельзя привести
   source: "jev" | "rules";
+  usage?: JevUsage;            // расход вызова Jev (тип величины), если он был: при source jev и при негодном ответе Jev
 }
 
 const THRESHOLD = Number(process.env.JEV_THRESHOLD ?? 0.8);
@@ -340,6 +344,7 @@ export interface ParsedInputs {
   unsure: string | null;           // правилами не решить — реплику целиком решает модель (без частичного применения); значение — причина
   named: boolean;                  // проверка бумаги: названы сумма или комиссия (любое число вне номера ОФЗ и фразы обещания, слово денег или комиссии) — их не разбираем и не переносим прошлые, просим написать отдельным сообщением
   query: string;                   // проверка бумаги: запрос в ISS; пустой — бумагу не выделить, решает модель
+  usage: JevUsage | null;          // расход вызова Jev (тип обещания), если он был, — и при unsure: вызов уже оплачен (H.7)
 }
 /**
  * Вводы реплики. "set" (отчёт есть) — сумма, комиссия, обещание; число без опоры («вложу 2 млн или 3») и названная бумага — unsure.
@@ -348,7 +353,7 @@ export interface ParsedInputs {
  */
 export async function parseInputs(text: string, mode: "check" | "set", lastAssistant: string | null = null): Promise<ParsedInputs> {
   const set = mode === "set";
-  const out: ParsedInputs = { position_size: null, k_pct: null, promise: null, unsure: "сложная реплика", named: false, query: "" };
+  const out: ParsedInputs = { position_size: null, k_pct: null, promise: null, unsure: "сложная реплика", named: false, query: "", usage: null };
   if (isComplex(text)) return out;
   if (!set) out.query = paperQuery(text);
   const t0 = stripIds(lower(text));
@@ -377,11 +382,12 @@ export async function parseInputs(text: string, mode: "check" | "set", lastAssis
   const named = !set && (money.seen || k.seen || scanNums(t).some((n) => !n.ofz && !inPromise(n.start)) ||
     CHECK_NAMED.test(blank(lower(text), p.region ? [p.region] : []).replace(INTRO, "").replace(VERB_PREFIX, "")));
   const promise = p.decision ? await jevKind(text, p.decision) : null;
+  const usage = promise?.usage ?? null;
   // Jev и правила разошлись (правила: за период / за срок, Jev: годовые) или к годовым не привести — решает модель
   const rk = p.decision?.kind;
   if (promise && ((promise.kind !== rk && (rk === "per_period" || rk === "total_for_term")) || (promise.annualized == null && promise.kind !== "total_for_term")))
-    return { ...out, unsure: "тип обещания неясен" };
-  return { ...out, unsure: null, position_size: set ? money.value : null, k_pct: set ? k.value : null, promise, named };
+    return { ...out, unsure: "тип обещания неясен", usage };
+  return { ...out, unsure: null, position_size: set ? money.value : null, k_pct: set ? k.value : null, promise, named, usage };
 }
 
 /** Цена предложения, % номинала — только в ответ на «По какой цене вам предлагают купить?», вся реплика — «98,5%», «98 от номинала», «по цене 99»; вне 50–150 — модели */
@@ -484,11 +490,12 @@ export async function routeMessage(text: string, hasReport: boolean, lastAssista
         },
       },
     );
+    const usage: JevUsage = { inputTokens: res.usage?.input_tokens, cost: res.usage?.cost };
     const a = res.answers.intent;
-    if (a.type !== "choice" || !(a.choice in INTENTS)) return routeByRules(text, hasReport);
+    if (a.type !== "choice" || !(a.choice in INTENTS)) return { ...routeByRules(text, hasReport), usage }; // ответ не годится, но вызов оплачен
     return {
       intent: a.choice as Intent, confidence: a.confidence, probabilities: a.probabilities as Partial<Record<Intent, number>>,
-      mentionsSecurity: noulOf(res.answers.mentions_security), source: "jev", usage: { inputTokens: res.usage?.input_tokens, cost: res.usage?.cost },
+      mentionsSecurity: noulOf(res.answers.mentions_security), source: "jev", usage,
     };
   } catch (e) {
     // Jev недоступен — падаем на правила, диалог не ломаем; причину пишем в журнал (route.ts → jev_error)
@@ -506,11 +513,12 @@ async function jevKind(text: string, rules: PromiseDecision): Promise<PromiseDec
       { message: text, number_found: rules.value },
       { kind: { type: "choice", instructions: "Что за величину назвал пользователь, говоря о том, что ему обещал продавец?", criteria: PROMISE_KINDS } },
     );
+    const usage: JevUsage = { inputTokens: res.usage?.input_tokens, cost: res.usage?.cost };
     const a = res.answers.kind;
-    if (a.type !== "choice" || !(a.choice in PROMISE_KINDS)) return rules;
+    if (a.type !== "choice" || !(a.choice in PROMISE_KINDS)) return { ...rules, usage }; // ответ не годится, но вызов оплачен
     const kind = a.choice as PromiseKind;
     const annualized = kind === "annual_yield" || kind === "coupon_rate" ? rules.value : kind === "per_period" && rules.kind === "per_period" ? rules.annualized : null;
-    return { kind, confidence: a.confidence, value: rules.value, annualized, source: "jev" };
+    return { kind, confidence: a.confidence, value: rules.value, annualized, source: "jev", usage };
   } catch {
     return rules;
   }

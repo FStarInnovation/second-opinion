@@ -14,14 +14,16 @@ import type { BondReportT, BuildResultT, ReportInputs } from "@so/engine/contrac
 import { CONFIG } from "@so/engine/config";
 import { fmtMax, rub } from "@so/engine/format";
 import {
-  isAdviceRequest, isComplex, isFollowUp, isRetell, looksLikePaper, offerPriceIn, parseInputs, routeMessage, jevThreshold, type PromiseDecision, type RouteDecision,
+  isAdviceRequest, isComplex, isFollowUp, isRetell, looksLikePaper, offerPriceIn, parseInputs, routeMessage, jevThreshold,
+  type JevUsage, type PromiseDecision, type RouteDecision,
 } from "./jev";
 import { buildCached, rebuild } from "./engine";
 import { findTerm } from "./glossary";
 import { setResult, type ChatSession } from "./session";
 import { inputsSchema, type ReportToolResult, type ExplainResult, type ToolName } from "./tools";
 
-export interface GateOutcome { handled: boolean; decision: RouteDecision }
+/** decision — маршрут реплики (его вызов Jev — в decision.usage); jevUsage — прочие вызовы Jev реплики (разбор вводов: тип обещания) */
+export interface GateOutcome { handled: boolean; decision: RouteDecision; jevUsage: JevUsage[] }
 
 const id = () => "gate_" + Math.random().toString(36).slice(2, 10);
 
@@ -103,6 +105,11 @@ function askText(r: BondReportT, given: ReportInputs): string {
 }
 
 const SEPARATELY = " Сумму и комиссию напишите отдельным сообщением — пересчитаю.";
+/** Главные red flags отчёта — названия флагов truth_score.top3 движка в его порядке (числа и порядок считает движок, TG.14) */
+export function topFlagsText(r: BondReportT): string {
+  const top = r.truth_score.top3.flatMap((flagId) => r.flags.find((f) => f.id === flagId)?.title ?? []).map((t) => t.toLowerCase());
+  return top.length ? ` Главные red flags: ${top.join(", ")}.` : " Ни один из red flags не сработал.";
+}
 function reportText(res: BuildResultT, origin?: InputsOrigin): string {
   if (res.kind === "pick") return `Нашлось несколько выпусков по запросу «${res.query}» — выберите нужный в списке выше или уточните запрос.`;
   if (res.kind === "notfound") return res.isinValid
@@ -115,8 +122,7 @@ function reportText(res: BuildResultT, origin?: InputsOrigin): string {
   if (r.status.kind === "no_price") return "По этой бумаге сейчас нет биржевой цены: сделок не было. По какой цене вам предлагают купить? Напишите в процентах от номинала — пересчитаю доходность от неё." + carried + tail;
   if (r.status.kind === "not_traded") return "Бумага не торгуется на Мосбирже — выйти через биржу нельзя. Red flags и Truth Score — в блоке выше." + carried + tail;
   if (r.status.kind === "no_coupon_rate") return "Ставка первого купона ещё не опубликована, поэтому доходность пока не рассчитать. Ликвидность и red flags — в блоках выше." + carried + tail;
-  const fired = r.flags.filter((f) => f.fired).sort((a, b) => b.points - a.points).slice(0, 3).map((f) => f.title.toLowerCase());
-  const flags = fired.length ? ` Главные red flags: ${fired.join(", ")}.` : " Ни один из red flags не сработал.";
+  const flags = topFlagsText(r);
   const claim = r.claim.line ? " Обещанную доходность сравнил с расчётной — разница в блоке «Доходность»." : "";
   return `Отчёт по ${r.security.shortname} собран — смотрите блоки выше.${carried}${claim}${flags}${tail || askText(r, origin?.given ?? {})}`;
 }
@@ -195,7 +201,7 @@ export async function runGate(
   // Прямая просьба о совете («посоветуй облигацию», «какую облигацию купить?») — отказ шаблоном до Jev, модель не нужна
   if (!complex && isAdviceRequest(text)) {
     writeText(w, hasReport ? ADVICE_WITH_REPORT : ADVICE_NO_REPORT);
-    return { handled: true, decision: byRules("out_of_scope") };
+    return { handled: true, decision: byRules("out_of_scope"), jevUsage: [] };
   }
 
   // «0,3» в ответ на «Напишите комиссию брокера — пересчитаю» — комиссия (без слов обещания число обещанием не считается)
@@ -208,13 +214,20 @@ export async function runGate(
     const current = session.result;
     const out = await reportTool(w, "set_inputs", { k_pct: bareK }, query, () => change(query, current, { k_pct: bareK }));
     writeText(w, out.result.kind === "report" ? appliedText(out.result.report, { k_pct: bareK }, null) : reportText(out.result));
-    return { handled: true, decision: byRules("set_commission") };
+    return { handled: true, decision: byRules("set_commission"), jevUsage: [] };
   }
 
   const decision = await routeMessage(text, hasReport, lastAssistant);
   session.usage.jev += 1;
-  const done = (): GateOutcome => ({ handled: true, decision });
-  const pass = (): GateOutcome => ({ handled: false, decision });
+  // Вызовы Jev разбора вводов — в исход гейта и при pass: вызов уже оплачен, маршрут списывает его в бюджет (H.7)
+  const jevUsage: JevUsage[] = [];
+  const parse = async (mode: "check" | "set", last: string | null = null) => {
+    const p = await parseInputs(text, mode, last);
+    if (p.usage) jevUsage.push(p.usage);
+    return p;
+  };
+  const done = (): GateOutcome => ({ handled: true, decision, jevUsage });
+  const pass = (): GateOutcome => ({ handled: false, decision, jevUsage });
   if (complex || decision.confidence < jevThreshold()) return pass();
 
   switch (decision.intent) {
@@ -222,7 +235,7 @@ export async function runGate(
       // Вводы снизу вверх: сумма и комиссия прошлого отчёта (новая бумага), со страницы /check (к первому отчёту сессии), «обещали» /
       // «под N%» из реплики; сумму и комиссию из реплики проверки не разбираем. Запрос не похож на бумагу («Проверь ещё раз»,
       // «менеджер говорит 18 годовых») или доход за срок («обещали 30% за 2,5 года») — решает модель
-      const p = await parseInputs(text, "check");
+      const p = await parse("check");
       const { query } = p, promised = p.promise?.annualized ?? null;
       if (p.unsure || !looksLikePaper(query) || (p.promise && promised == null)) return pass();
       const prev = session.result?.kind === "report" ? session.result.report : null;
@@ -249,7 +262,7 @@ export async function runGate(
       const query = session.query;
       const current = session.result;
       if (!hasReport || !query || !current) return pass();
-      const p = await parseInputs(text, "set", lastAssistant);
+      const p = await parse("set", lastAssistant);
       if (p.unsure) return pass(); // «у меня 3 млн, вложу 1 млн», «комиссия 0,3 или 0,05», «обещали от 18 до 26%» — решает модель
       // Jev выбрал сумму или комиссию, а правила этого ввода не нашли или нашли обещание (эти интенты обещание не применяли: «Самолёт,
       // обещали 26%», «комиссия биржи 0,01%» при Jev set_position) — Jev и правила разошлись, решает модель

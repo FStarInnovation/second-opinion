@@ -7,6 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { budgetExhaustedText } from "@so/present/copy";
 
 const DIR = process.env.SO_USAGE_DIR ?? path.join(process.cwd(), ".usage");
 const FILE = path.join(DIR, "budget.json");
@@ -60,6 +61,5 @@ export function budgetState() {
   return { ...b, limit: DAILY_BUDGET_USD, exhausted };
 }
 
-export const BUDGET_EXHAUSTED_TEXT =
-  "Дневной лимит тестового стенда на ответы ассистента исчерпан — он обновится в полночь по Москве. " +
-  "Проверка бумаги без ассистента работает: откройте главную страницу и введите ISIN или название.";
+/** Отказ сайта при исчерпанном бюджете; текст — из @so/present/copy (у Telegram свой, маршрут выбирает по каналу) */
+export const BUDGET_EXHAUSTED_TEXT = budgetExhaustedText("web");

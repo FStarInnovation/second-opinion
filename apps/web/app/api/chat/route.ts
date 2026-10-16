@@ -2,6 +2,8 @@
  * Маршрут чата. Порядок: лимит сообщений → Jev-гейт (уверенные реплики — инструмент без LLM)
  * → модель с одобренным реестром инструментов. Usage каждого вызова пишется в лог и в сессию.
  * Поле тела inputs — вводы со страницы /check (переход «отчёт → ассистент»): к первому отчёту сессии.
+ * Клиентов два — сайт и Telegram-бот (план WP-TG §4.3): тела одинаковые, канал определяет channelOf по id сессии и заголовкам
+ * бота до счёта реплики. Канал читают только тексты отказа (лимит, бюджет) и журнал; в решения он не передаётся (TG.G3).
  */
 import {
   convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, stepCountIs, streamText, type UIMessage,
@@ -13,7 +15,9 @@ import { getSession, MESSAGE_LIMIT } from "@/lib/session";
 import { runGate } from "@/lib/gate";
 import { jevProvider } from "@/lib/jev";
 import { appendUsage, estimateCost, ANSWER_LOG_CHARS, USER_TEXT_LOG_CHARS } from "@/lib/usage-log";
-import { budgetState, countMessage, spend, BUDGET_EXHAUSTED_TEXT } from "@/lib/budget";
+import { budgetState, countMessage, spend } from "@/lib/budget";
+import { channelOf } from "@/lib/channel";
+import { limitText, budgetExhaustedText } from "@so/present/copy";
 import type { ReportInputs } from "@so/engine/contract";
 
 export const maxDuration = 60;
@@ -24,7 +28,11 @@ const textOf = (m: UIMessage | undefined) =>
 export async function POST(req: Request) {
   const body = (await req.json()) as { messages: UIMessage[]; id?: string; inputs?: unknown };
   const messages = body.messages ?? [];
-  const session = getSession(body.id ?? req.headers.get("x-so-chat") ?? "anon");
+  // Ключ бота — до сессии и счёта реплики: 403 не засчитывает ход ни в сессию, ни в budget.messages
+  const id = body.id ?? req.headers.get("x-so-chat") ?? "anon";
+  const ch = channelOf(req, id);
+  if (!ch.ok) return new Response(null, { status: 403 });
+  const session = getSession(id);
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
   const text = textOf(lastUser);
@@ -42,11 +50,11 @@ export async function POST(req: Request) {
       }),
     });
   if (session.userMessages > MESSAGE_LIMIT)
-    return plainReply(`В этой сессии лимит ${MESSAGE_LIMIT} сообщений исчерпан. Обновите страницу, чтобы начать новую проверку.`);
+    return plainReply(limitText(ch.channel, MESSAGE_LIMIT));
   const budget = budgetState();
   if (budget.exhausted) {
-    log({ chat: session.id, step: "budget", spent: Math.round(budget.spent * 1e4) / 1e4, limit: budget.limit });
-    return plainReply(BUDGET_EXHAUSTED_TEXT);
+    log({ chat: session.id, channel: ch.channel, step: "budget", spent: Math.round(budget.spent * 1e4) / 1e4, limit: budget.limit });
+    return plainReply(budgetExhaustedText(ch.channel));
   }
   countMessage();
 
@@ -63,14 +71,17 @@ export async function POST(req: Request) {
     originalMessages: messages,
     execute: async ({ writer }) => {
       /* 1. Jev-гейт */
-      const gate = text ? await runGate(writer, session, text, textOf(lastAssistant) || null) : { handled: false, decision: null };
-      const jevIn = gate.decision?.usage?.inputTokens;
-      if (gate.decision?.source === "jev") spend(gate.decision.usage?.cost ?? estimateCost("jev", jevIn ?? 0) ?? 0);
+      const gate = text ? await runGate(writer, session, text, textOf(lastAssistant) || null) : { handled: false, decision: null, jevUsage: [] };
+      // Все вызовы Jev реплики — в дневной бюджет (H.7): маршрут (decision) и разбор вводов гейтом (тип обещания, parseInputs)
+      const jevCalls = [...(gate.decision?.usage ? [gate.decision.usage] : []), ...gate.jevUsage];
+      const jevIn = jevCalls.reduce((s, u) => s + (u.inputTokens ?? 0), 0);
+      const jevCost = jevCalls.reduce((s, u) => s + (u.cost ?? estimateCost("jev", u.inputTokens ?? 0) ?? 0), 0);
+      if (jevCalls.length) spend(jevCost);
       log({
-        chat: session.id, step: "gate", text: text.slice(0, USER_TEXT_LOG_CHARS),
+        chat: session.id, channel: ch.channel, step: "gate", text: text.slice(0, USER_TEXT_LOG_CHARS),
         ...(gate.decision ? { intent: gate.decision.intent, confidence: gate.decision.confidence, source: gate.decision.source } : {}),
         handled: gate.handled,
-        ...(gate.decision?.source === "jev" ? { jev_in: jevIn, jev_cost: gate.decision.usage?.cost ?? estimateCost("jev", jevIn ?? 0) } : {}),
+        ...(jevCalls.length ? { jev_in: jevIn, jev_cost: jevCost, jev_calls: jevCalls.length } : {}),
         ...(gate.decision?.jevError ? { jev_error: gate.decision.jevError } : {}),
       });
       if (gate.handled) {
@@ -103,7 +114,7 @@ export async function POST(req: Request) {
           session.usage.cost += cost;
           spend(cost);
           log({
-            chat: session.id, step: "llm", provider: provider(), model,
+            chat: session.id, channel: ch.channel, step: "llm", provider: provider(), model,
             in: usage.inputTokens, cached, cache_write: cacheWrite, out: usage.outputTokens, cost: Math.round(cost * 1e6) / 1e6,
             cost_source: or?.usage?.cost != null ? "provider" : "price-list",
             tools: toolCalls.map((t) => t.toolName),
@@ -113,13 +124,13 @@ export async function POST(req: Request) {
       writer.merge(result.toUIMessageStream({ sendStart: false }));
     },
     onError: (e) => {
-      log({ step: "error", error: String(e).slice(0, 300) });
+      log({ channel: ch.channel, step: "error", error: String(e).slice(0, 300) });
       return "Не получилось ответить — попробуйте ещё раз или переформулируйте запрос.";
     },
     // Что увидел пользователь — и от гейта, и от модели: начало текста ответа и имена инструментов. Ключей и заголовков здесь нет;
     // в тексте ответа бывают сумма и комиссия пользователя и повтор его запроса (см. шапку lib/usage-log.ts)
     onEnd: ({ responseMessage, isAborted }) => {
-      log({ chat: session.id, step: "answer", by: answeredBy ?? "none", ...answerOf(responseMessage), ...(isAborted ? { aborted: true } : {}) });
+      log({ chat: session.id, channel: ch.channel, step: "answer", by: answeredBy ?? "none", ...answerOf(responseMessage), ...(isAborted ? { aborted: true } : {}) });
     },
   });
   // Диагностические заголовки — только при разработке и в MOCK: на проде имена провайдеров наружу не уходят
