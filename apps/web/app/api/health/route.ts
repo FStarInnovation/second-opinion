@@ -1,7 +1,15 @@
 /**
  * Проверка живости. Наружу (через Caddy) — только { ok }: ни модели, ни провайдеров, ни бюджета, и Jev не вызывается.
- * Подробности (режим, модель, Jev, бюджет) — только запросу с самого сервера: deploy/heidi/deploy.sh
+ * Подробности (режим, модель, Jev, бюджет, версия кода) — только запросу с самого сервера: deploy/heidi/deploy.sh
  * (curl http://127.0.0.1:3000/api/health) и защита e2e-тестов (tools/validate/src/e2e-chat.ts читает поле mode).
+ * version — содержимое <repo>/VERSION без пробельных символов по краям (короткий sha; его пишет deploy.sh до рестарта),
+ * пустой файл или нет файла — "dev". Читается ОДИН раз, при первой загрузке модуля маршрута. В Next 16 userland маршрута
+ * грузится лениво, при первом запросе к /api/health
+ * (LazyModule, next/dist/server/route-modules/app-route/module.js:152-161); preloadEntriesOnStart грузит только входной чанк.
+ * Поэтому значение фиксирует первый ответ /api/health (deploy.sh дёргает его сразу после рестарта), а процесс, к которому
+ * /api/health ещё не обращались, отдаст то, что лежит в файле на момент первого запроса. После первого запроса файл больше
+ * не читается: deploy.sh и бот сверяют версию ЗАПУЩЕННОГО процесса, а не файла (план WP-TG §4.3).
+ * Каталог репозитория — SO_APP_DIR, иначе два уровня вверх от cwd (на проде cwd = $APP_DIR/apps/web).
  * Проверка Jev — один крошечный decision-запрос; удачный результат кэшируется на 5 минут, сбой — на 30 секунд;
  * стоимость идёт в дневной бюджет. Значения ключей не уходят никуда.
  *
@@ -9,12 +17,25 @@
  * Поэтому Next должен слушать только loopback: `next start -H 127.0.0.1 -p 3000` (apps/web/package.json, скрипт start)
  * или порт 3000 закрыт снаружи. Сокета обработчик не видит, а X-Forwarded-For от клиента Next не перезаписывает (??=).
  */
+import fs from "node:fs";
+import path from "node:path";
 import { isMock, provider, modelLabel } from "@/lib/model";
 import { jevProvider, jevDecide, type JevProvider } from "@/lib/jev";
 import { budgetState, spend } from "@/lib/budget";
 import { estimateCost } from "@/lib/usage-log";
 
 export const dynamic = "force-dynamic";
+
+/** Версия кода этого процесса: <repo>/VERSION без пробельных символов по краям (пустой файл или нет файла — "dev").
+ *  Читается один раз, при первой загрузке модуля маршрута; в Next 16 это первый запрос к /api/health, а не старт процесса. */
+const VERSION: string = (() => {
+  const file = path.join(process.env.SO_APP_DIR ?? path.resolve(process.cwd(), "../.."), "VERSION");
+  try {
+    return fs.readFileSync(file, "utf8").trim() || "dev";
+  } catch {
+    return "dev";
+  }
+})();
 
 /* ───── «запрос с самого сервера» ─────
  * Caddy (reverse_proxy) каждому внешнему запросу ставит X-Forwarded-For = адрес клиента и передаёт внешний Host
@@ -82,7 +103,7 @@ export async function GET(req?: Request) {
   const jevInfo = jev ? { provider: jev, ...(await jevStatus(jev)) } : null;
   const b = budgetState();
   return Response.json({
-    ok: true, mode: isMock() ? "mock" : provider(), model: modelLabel(), jev: jevInfo,
+    ok: true, version: VERSION, mode: isMock() ? "mock" : provider(), model: modelLabel(), jev: jevInfo,
     budget: { day: b.day, spent_usd: Math.round(b.spent * 1e4) / 1e4, limit_usd: b.limit, messages: b.messages, exhausted: b.exhausted },
   }, init);
 }
