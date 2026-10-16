@@ -1,28 +1,18 @@
 "use client";
 /**
- * Примитивы блоков. Форматирование — только отображение готовых чисел контракта (ru-RU),
- * никакой арифметики методики здесь нет (инвариант 3).
+ * Примитивы блоков. Тексты, числа и тон приходят готовыми из view-model (@so/present/report); здесь только разметка.
  */
 import type { ReactNode } from "react";
-import { fmt, fmtMax } from "@so/engine/format";
-import { CONFIG } from "@so/engine/config";
 
-export type Tone = "good" | "mid" | "bad" | "none";
-
-/** Тон по Truth Score — те же пороги, что градации в конфиге движка. */
-export function scoreTone(score: number): Tone {
-  const [good, mid] = [CONFIG.grades[0][0], CONFIG.grades[1][0]];
-  return score >= good ? "good" : score >= mid ? "mid" : "bad";
+/**
+ * Строка VM «значение подпись» → [значение, подпись] по первому пробелу: крупное число и подпись к нему сайт рисует разными
+ * стилями («40 / 100», «8,32% после налога», «+0,24% за период до колла …», «Искали: <запрос>»). Разделитель тысяч в числах
+ * ru-RU — неразрывный пробел, поэтому число не режется.
+ */
+export function splitFirst(s: string): [string, string] {
+  const i = s.indexOf(" ");
+  return i < 0 ? [s, ""] : [s.slice(0, i), s.slice(i + 1)];
 }
-
-export function liquidityTone(cat: string, noExit: boolean): Tone {
-  if (noExit) return "bad";
-  return cat === "норм" ? "good" : cat === "умеренно" ? "mid" : cat === "низкая" ? "bad" : "none";
-}
-
-export const pct2 = (x: number) => fmt(x, 2) + "%";
-export const pctMax = (x: number) => fmtMax(x, 2) + "%";
-export const cap1 = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 export function Card(props: { id: string; title?: ReactNode; sub?: ReactNode; className?: string; block?: string; children: ReactNode }) {
   const h = props.title ? `h-${props.id}` : undefined;
@@ -44,9 +34,12 @@ export function Card(props: { id: string; title?: ReactNode; sub?: ReactNode; cl
 }
 
 export interface BarDatum {
-  key: string; label: string; value: number; color: string;
-  /** Ввод пользователя («обещали 26%») показываем как ввели, без принудительных двух знаков. */
-  exact?: boolean;
+  key: string;
+  /** подпись и значение — строки VM (bars[].label, bars[].value) */
+  label: string; value: string;
+  /** число движка — только для ширины полосы */
+  pct: number;
+  color: string;
 }
 
 /**
@@ -55,18 +48,17 @@ export interface BarDatum {
  * (data-legend-for) ссылается на нарисованную серию (data-series).
  */
 export function Bars({ data, caption }: { data: BarDatum[]; caption: string }) {
-  const max = Math.max(0, ...data.map((d) => d.value));
-  const show = (d: BarDatum) => (d.exact ? pctMax(d.value) : pct2(d.value));
-  const aria = caption + ": " + data.map((d) => `${d.label} ${show(d)}`).join(", ");
+  const max = Math.max(0, ...data.map((d) => d.pct));
+  const aria = caption + ": " + data.map((d) => `${d.label} ${d.value}`).join(", ");
   return (
     <div className="bars" role="img" aria-label={aria} data-chart="yield-bars">
       {data.map((d) => {
-        const w = max > 0 && d.value > 0 ? (d.value / max) * 100 : 0;
+        const w = max > 0 && d.pct > 0 ? (d.pct / max) * 100 : 0;
         return (
           <div key={d.key} aria-hidden="true">
             <div className="bar__head">
               <span className="bar__label" data-legend-for={w > 0 ? d.key : undefined}>{d.label}</span>
-              <span className="bar__val">{show(d)}</span>
+              <span className="bar__val">{d.value}</span>
             </div>
             {w > 0 ? (
               <div className="bar__track">

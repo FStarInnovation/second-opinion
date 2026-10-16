@@ -3,9 +3,13 @@
  * Композиция страницы отчёта: рендерит ТОЛЬКО блоки из r.panels (их выбрал движок — composePanels),
  * раскладывая их по сетке прототипа v3. Шаблон не содержит фактов о бумаге.
  * Один и тот же компонент — на статической странице (Э2) и в tool renderer чата (Э3), инвариант 4.
+ * Тексты шапки и заголовок карточки «Доходность» — из view-model (presentReport, @so/present/report), литералы ссылок — WEB.
  */
 import type { ReactNode } from "react";
 import type { BondReportT, PanelIdT, ReportInputs } from "@so/engine/contract";
+import { WEB } from "@so/present/copy";
+import { CABINET_HREF } from "@so/present/protocol";
+import { presentReport } from "@so/present/report";
 import {
   AskPrice, Claim, DataLine, Fees, FlagsScore, InputsPanel, Liquidity, Macro, Plaque, PriceLine, Product, Worst, Yield,
 } from "./blocks";
@@ -28,10 +32,15 @@ export interface ReportViewProps {
   beforePlaque?: ReactNode;
 }
 
-export const CABINET_HREF = "https://vfo.autremus.com";
+/** Кабинет — общий для сайта и Telegram-бота (@so/present/protocol); реэкспорт ради прежнего API @so/blocks */
+export { CABINET_HREF };
+
+/** Блоки карточки «Доходность»: её заголовок — у первой из этих секций VM */
+const YIELD_CARD: readonly PanelIdT[] = ["claim", "ask_price", "yield", "price_line"];
 
 export function ReportView(p: ReportViewProps) {
   const r = p.report;
+  const vm = presentReport(r);
   const has = (id: PanelIdT) => r.panels.includes(id);
   const yieldCard = has("claim") || has("yield") || has("price_line") || has("ask_price");
   const showInputs = (p.showInputs ?? true) && (has("liquidity") || has("fees"));
@@ -40,14 +49,14 @@ export function ReportView(p: ReportViewProps) {
   return (
     <div className={p.compact ? "stack" : "so-main"} data-report={r.schema} data-status={r.status.kind}>
       {!p.compact ? (
-        <a className="btn btn-ghost" href={p.newCheckHref ?? "./"}><BackIcon />Новая проверка</a>
+        <a className="btn btn-ghost" href={p.newCheckHref ?? "./"}><BackIcon />{WEB.newCheck}</a>
       ) : null}
 
       <div className="so-title">
-        {has("data_line") ? <DataLine r={r} /> : null}
-        <span className="so-title__kind">Базовый отчёт · облигация</span>
-        <h1>{r.security.shortname}</h1>
-        {r.security.isin ? <p className="cap mono">{r.security.isin}</p> : null}
+        {vm.dataTime != null ? <DataLine r={r} /> : null}
+        <span className="so-title__kind">{vm.kicker}</span>
+        <h1>{vm.name}</h1>
+        {vm.isin ? <p className="cap mono">{vm.isin}</p> : null}
       </div>
 
       {has("product") ? <Product r={r} /> : null}
@@ -56,7 +65,7 @@ export function ReportView(p: ReportViewProps) {
         <div className="grid-2">
           {yieldCard ? (
             <section className="card" aria-labelledby="h-yield" style={{ gap: 16 }}>
-              <h2 id="h-yield">Доходность</h2>
+              <h2 id="h-yield">{vm.sections.find((s) => YIELD_CARD.includes(s.id))?.title}</h2>
               {has("claim") ? <Claim r={r} /> : null}
               {has("ask_price") ? <AskPrice r={r} onSubmit={p.onAskPrice} unavailableNote={p.askPriceUnavailableNote} /> : null}
               {has("yield") ? <Yield r={r} /> : null}
@@ -79,9 +88,9 @@ export function ReportView(p: ReportViewProps) {
 
       {has("macro") ? <Macro r={r} /> : null}
       {p.beforePlaque ?? null}
-      {has("plaque") ? <Plaque cabinetHref={p.cabinetHref ?? CABINET_HREF} /> : null}
+      {vm.plaque ? <Plaque cabinetHref={p.cabinetHref ?? CABINET_HREF} /> : null}
 
-      {!p.compact ? <p className="cap">Не является индивидуальной инвестиционной рекомендацией.</p> : null}
+      {!p.compact ? <p className="cap">{WEB.disclaimer}</p> : null}
     </div>
   );
 }

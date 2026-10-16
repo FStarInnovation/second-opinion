@@ -73,5 +73,42 @@ export const BOT: {
   openOnSite: "Открыть на сайте",
 };
 
-/** Литералы React, которых нет во view-model: формы ввода, «Новая проверка», кнопки. Заполняет P2 (шаг 3) */
-export const WEB: Record<string, string> = {};
+/**
+ * Литералы React (@so/blocks), которых нет во view-model: формы ввода, «Новая проверка», кнопки и подписи элементов управления.
+ * Тексты отчёта и веток — во view-model (@so/present/report). В Telegram этих элементов нет.
+ */
+export const WEB = {
+  /** ссылка на главную со страницы отчёта и веток */
+  newCheck: "Новая проверка",
+  /** низ страницы отчёта (/check) */
+  disclaimer: "Не является индивидуальной инвестиционной рекомендацией.",
+  /* форма цены предложения (ветка «нет цены», AskPrice) */
+  askPriceLabel: "По какой цене вам предлагают купить? % от номинала",
+  askPricePlaceholder: "например, 98,5",
+  askPriceSubmit: "Посчитать",
+  askPriceInvalid: "Укажите цену в процентах от номинала, например 98,5",
+  /** после отправки, когда хост не передал ни пересчёт, ни своё пояснение */
+  askPriceUnavailable: "Пересчёт по вашей цене недоступен на этой странице.",
+  /* панель ввода (InputsPanel) */
+  inputsPosition: "Сколько планируете вложить, ₽",
+  inputsPositionOwn: "Своя сумма",
+  /** подписи пресетов суммы: «100 тыс», «1 млн» */
+  presetThousand: "тыс",
+  presetMillion: "млн",
+  inputsK: "Комиссия брокера, % от суммы сделки",
+  inputsKPlaceholder: "например, 0,3",
+  inputsPromised: "Сколько обещали, % годовых",
+  inputsPromisedPlaceholder: "например, 18",
+  /** кнопка плашки полного отчёта (в Telegram — кнопка BOT.fullReport) */
+  plaqueCta: "Войти и получить полный отчёт",
+  /* выбор выпуска (PickView) */
+  pickAria: "Найденные выпуски",
+  pickHeadName: "Выпуск и ISIN",
+  pickHeadReg: "Рег. номер",
+  pickHeadTrading: "Торги",
+  pickCheck: "Проверить",
+  /* «не нашли» (NotFoundView) */
+  checkIsin: "Проверить ISIN",
+  uploadDoc: "Загрузить документ продавца",
+  uploadDocTitle: "Вход файлом — после MVP",
+} satisfies Record<string, string>;
