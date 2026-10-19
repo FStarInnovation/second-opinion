@@ -7,7 +7,8 @@
   "scripts": {
     "validate": "tsx src/validate.ts",
     "selfcheck": "tsx src/validate.ts --selfcheck",
-    "e2e:chat": "tsx src/e2e-chat.ts"
+    "e2e:chat": "tsx src/e2e-chat.ts",
+    "e2e:bot": "tsx src/e2e-bot.ts"
   },
   "dependencies": {
     "@so/engine": "0.1.0",
