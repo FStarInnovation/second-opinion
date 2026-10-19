@@ -28,7 +28,8 @@
  * список выпусков кнопками pk:); кнопка pk: (выбор выпуска → отчёт); реплика с ISIN (заглушка WAIT_REPORT → editMessageText
  * отчётом → текст); продолжение и /new; deep-link /start <payload> (ссылка d6); не-текст → BOT.onlyText; группа — игнор;
  * лимит сообщений сессии (limitText telegram); SIGTERM во время хода → ход доставлен, выход ≤ 30 с; приватность журнала бота
- * (нет chat_id, user_id, имён, текстов, токена, ключа, соли) и usage.jsonl (--usage-dir: channel telegram, tg_-сессии без сырых id).
+ * (нет chat_id, user_id, имён, текстов реплик и аргументов команд — payload deep-link, токена, ключа, соли) и usage.jsonl
+ * (--usage-dir: channel telegram, tg_-сессии без сырых id).
  * SIGTERM получает только процесс npm — как systemd при KillMode=mixed в юните setup.sh: npm передаёт его tsx, tsx — main.ts.
  * Скрипт start исполняет bash (npm_config_script_shell=/bin/bash, как Environment= юнита): bash делает exec, промежуточного sh нет.
  * Почему не вся группа, как при KillMode=control-group по умолчанию: main.ts получил бы SIGTERM дважды — от systemd и от tsx,
@@ -125,17 +126,19 @@ const feed = (stream: NodeJS.ReadableStream | null) => {
 feed(bot.stdout);
 feed(bot.stderr);
 const exited = new Promise<void>((resolve) => bot.on("exit", (code, signal) => { proc.exit = { code, signal, at: Date.now() }; for (const w of [...journalWaiters]) w(); resolve(); }));
-// бот в своей группе процессов (detached): Ctrl+C или падение e2e не должны оставить его жить
+// бот в своей группе процессов (detached): Ctrl+C или падение e2e не должны оставить его жить, а временный SO_APP_DIR — остаться
 const killGroup = () => { if (bot.pid) { try { process.kill(-bot.pid, "SIGKILL"); } catch { /* группы уже нет */ } } };
-process.on("exit", killGroup);
-for (const sig of ["SIGINT", "SIGTERM"] as const) process.once(sig, () => { killGroup(); process.exit(130); });
+// синхронно (обработчик exit асинхронного не ждёт); force — повтор после cleanup() безопасен
+const rmAppDir = () => { try { fs.rmSync(appDir, { recursive: true, force: true }); } catch { /* best effort */ } };
+process.on("exit", () => { killGroup(); rmAppDir(); });
+for (const sig of ["SIGINT", "SIGTERM"] as const) process.once(sig, () => { killGroup(); rmAppDir(); process.exit(130); });
 
 /** Убрать за собой: группа процессов бота (npm → tsx → node), фейк, временный каталог */
 async function cleanup(): Promise<void> {
   killGroup(); // вся группа, даже если npm уже вышел: осиротевший процесс бота не должен пережить e2e
   if (!proc.exit) await Promise.race([exited, sleep(3000)]);
   await fake.close();
-  try { fs.rmSync(appDir, { recursive: true, force: true }); } catch { /* best effort */ }
+  rmAppDir();
 }
 function sleep(ms: number) { return new Promise<void>((r) => setTimeout(r, ms)); }
 const dumpJournal = () => { console.log("── журнал бота ──"); for (const l of journal) console.log("   " + l); };
@@ -431,11 +434,14 @@ try {
   for (const id of chatIds) if (numRe(id).test(text) || numRe(Math.abs(id)).test(text)) leaks.push(`chat_id/user_id ${id}`);
   for (const v of Object.values(MARK)) if (text.includes(v)) leaks.push(`имя-маркер ${v}`);
   for (const [k, v] of [["токен", TOKEN], ["хвост токена", TOKEN.split(":")[1]], ["SO_BOT_KEY", BOT_KEY], ["соль", SALT]] as const) if (v && text.includes(v)) leaks.push(k);
-  for (const t of new Set(userTexts)) if (!t.startsWith("/") && text.includes(t)) leaks.push(`текст реплики ${q(t, 40)}`);
+  // как TG.20: у команды ищется её аргумент (payload /start <payload> — ISIN, цена, сумма, комиссия); голые /start, /new, /help — пусто
+  const userPart = (t: string) => (t.startsWith("/") ? t.replace(/^\/\S+\s*/, "") : t);
+  for (const t of new Set(userTexts)) { const s = userPart(t); if (s && text.includes(s)) leaks.push(`текст реплики ${q(s, 40)}`); }
   if (journal.some((l) => TURN_RE.test(l) && /\bpseudo=/.test(l))) leaks.push("pseudo в записи хода");
-  // контроль поиска: маркер, подставленный намеренно, находится
-  const probe = numRe(CHAT.isin).test(`x ${CHAT.isin} y`) && `x ${MARK.first} y`.includes(MARK.first);
-  ok("приватность: в журнале бота нет chat_id/user_id, имён, текстов реплик, токена, ключа и соли; pseudo нет в записях хода", leaks.length === 0 && probe,
+  // контроль поиска: маркер, подставленный намеренно, находится; из deep-link ищется именно payload
+  const probe = numRe(CHAT.isin).test(`x ${CHAT.isin} y`) && `x ${MARK.first} y`.includes(MARK.first) &&
+    userPart(`/start ${payload}`) === payload && userPart("/new") === "" && `x ${payload} y`.includes(userPart(`/start ${payload}`));
+  ok("приватность: в журнале бота нет chat_id/user_id, имён, текстов реплик и payload deep-link, токена, ключа и соли; pseudo нет в записях хода", leaks.length === 0 && probe,
     leaks.length ? leaks.join("; ") : `${journal.length} строк журнала, ${turns} ходов`);
   if (USAGE_DIR) {
     const file = path.join(USAGE_DIR, "usage.jsonl");

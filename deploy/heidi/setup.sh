@@ -211,6 +211,6 @@ cat <<EOF
 5. Когда DNS mkt-second-opinion.ru укажет на $PUBLIC_IP — на сервере:
      DOMAINS="mkt-second-opinion.ru www.mkt-second-opinion.ru $SSLIP_HOST" bash setup.sh
 6. Telegram-бот (когда владелец решит включать; README, раздел «Telegram-бот»):
-     ssh heidi nano $APP_DIR/apps/bot/.env && ssh heidi chmod 600 $APP_DIR/apps/bot/.env
+     ssh heidi '(umask 077; touch $APP_DIR/apps/bot/.env)' && ssh heidi nano $APP_DIR/apps/bot/.env
      тот же SO_BOT_KEY — в $APP_DIR/apps/web/.env; затем deploy (шаг 3) запустит бота.
 EOF

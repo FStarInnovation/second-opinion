@@ -49,9 +49,16 @@ deploy/heidi/release.sh
 5. перезапуск сайта, проверка `is-active`;
 6. локальный `/api/health` сразу после рестарта: `version` должен совпасть с VERSION. Не совпал — на порту 3000 старый
    процесс (не заменённый рестартом или «осиротевший»), выкатка останавливается с кодом 1;
-7. бот — только если есть юнит, `apps/bot/.env` и в нём не `SO_TG=0`: `install -d -m 700 apps/bot/.state`, старт, затем до 70 с
-   ожидание свежего heartbeat и строк журнала этого запуска `getMe ok version=<sha>` и `polling version=<sha>`. Не дождались —
-   журнал бота на экран и код 1 (сайт при этом уже работает).
+7. бот — только если есть юнит, `apps/bot/.env` и в нём не `SO_TG=0`: `install -d -m 700 apps/bot/.state`, старт, затем
+   ожидание (всего до 70 с): строки журнала этого запуска `getMe ok version=<sha>` и `polling version=<sha>`, после них — рост
+   heartbeat, то есть первый `getUpdates` вернулся (long poll — до 50 с). Сами строки и heartbeat при старте работу не доказывают:
+   бот, падающий на первом `getUpdates` (409 от второго опросчика с тем же токеном, обрыв сети), пишет их в каждом цикле
+   `Restart=always`. Строка сбоя в журнале запуска (`fatal:`, `heartbeat stale`, `getMe failed`, `version mismatch` и т. п.), перезапуск
+   systemd (сменились `InvocationID`/`NRestarts`) или нет роста heartbeat — журнал бота на экран и код 1 (сайт при этом уже
+   работает); бот остаётся в `Restart=always`, остановить до исправления — `ssh heidi sudo systemctl stop second-opinion-bot`.
+
+Падение любого шага 2–6 оставляет бота остановленным (шаг 1) до следующей удачной выкатки — `deploy.sh` пишет об этом; после
+исправления повторите выкатку. Ручной `sudo systemctl restart second-opinion` бота не поднимает.
 
 Сборка ~1 мин. Предупреждения `deploy.sh`: права `apps/bot/.env` не 600; `SO_BOT_KEY` в `apps/web/.env` пуст или не равен ключу бота.
 
@@ -93,9 +100,12 @@ deploy/heidi/release.sh
    (`setup.sh` печатает то же самое). Нет ответа — бот работать не сможет; прокси только для клиента grammY — отдельное решение (§7).
 3. **Секреты прод-бота** — на сервере, руками:
    ```
+   ssh heidi 'mkdir -p /opt/second-opinion/apps/bot && (umask 077; touch /opt/second-opinion/apps/bot/.env)'
    ssh heidi nano /opt/second-opinion/apps/bot/.env
-   ssh heidi chmod 600 /opt/second-opinion/apps/bot/.env
    ```
+   Каталога `apps/bot` на сервере ещё нет (код WP-TG не выкачен, `.state` создаст root-шаг), поэтому сначала создаём его и
+   пустой `.env` с правами 600; nano сохраняет права существующего файла, секреты ни в какой момент не читаемы другими.
+   Root-шаг и checkout новой версии `.env` не трогают (он в `.gitignore`).
    Образец — `apps/bot/.env.example`. Нужны: `TG_BOT_TOKEN`, `TG_BOT_USERNAME` (без «@»), `SO_TG_SALT` и `SO_BOT_KEY`
    (оба — `openssl rand -base64 32`, разные), `SO_TG_ALLOW` (пусто — бот отвечает каждому только кодом доступа),
    по желанию `SO_TG_DAILY` (60), `SO_TG_CONCURRENCY` (4), `SO_SITE_URL` (кнопка «Открыть на сайте»; пусто — кнопки нет).
@@ -124,8 +134,9 @@ deploy/heidi/release.sh
 ### Эксплуатация
 
 - Состояние: `ssh heidi systemctl status second-opinion-bot`. «active» ≠ «работает»: бот пишет heartbeat
-  `/opt/second-opinion/apps/bot/.state/heartbeat` после каждого опроса Telegram (не реже раза в 50 с) и сам выходит с кодом 1,
-  если отметке больше 120 с; systemd поднимает его через 5 с.
+  `/opt/second-opinion/apps/bot/.state/heartbeat` при старте и после каждого опроса Telegram (не реже раза в 50 с) и сам выходит
+  с кодом 1, если отметке больше 120 с; systemd поднимает его через 5 с. Опрос идёт, если отметка обновляется; одна свежая
+  отметка сразу после старта этого не доказывает (её пишет и бот, который упадёт на первом опросе).
 - Версия: строка журнала `getMe ok version=<sha>` равна `version` локального `/api/health`; бот при старте сверяет её с сайтом и
   при расхождении не запускается (`version mismatch`).
 - Журнал (`journalctl -u second-opinion-bot`) — только служебные записи: событие, тип апдейта, время хода, статус. Текстов,
@@ -141,15 +152,31 @@ deploy/heidi/release.sh
 - `SO_TG=0` в `apps/bot/.env`, затем `ssh heidi sudo systemctl restart second-opinion-bot` — бот не опрашивает Telegram
   (heartbeat пишет). Выкатка при `SO_TG=0` бота не запускает.
 - `ssh heidi sudo systemctl stop second-opinion-bot` — до следующей выкатки (она запускает бота снова, если есть `.env` и не `SO_TG=0`).
+  Неудачная выкатка (сбой шагов 2–6) тоже оставляет бота остановленным до следующей удачной.
 - Пустой `SO_BOT_KEY=` в `apps/web/.env`, затем `ssh heidi sudo systemctl restart second-opinion` — сайт отвечает 403 на все
   запросы бота (бот отвечает «не получилось»), сайт работает как обычно.
 
 ### Откат
 
-- На версию с ботом: `release.sh` с нужной ветки — новый `deploy.sh` сам остановит и запустит бота.
-- На версию до бота (до WP-TG): сначала `ssh heidi sudo systemctl stop second-opinion-bot` — иначе живой процесс продолжит
-  ходить в старый сервер без проверки ключа; потом `release.sh`. Checkout удалит код бота, юнит дальше пропускается по
-  `ConditionPathExists=` (и после перезагрузки тоже). Совсем отключить юнит — root-шаг: `sudo systemctl disable second-opinion-bot`.
+`release.sh` пушит без force, поэтому коммит-предок текущего `main` на heidi он не выкатит: push будет отвергнут как
+non-fast-forward, и скрипт остановится до `deploy.sh`. Из detached HEAD `release.sh` не запускать: при пустом имени ветки он
+выполнит `git push heidi :main` и удалит `main` на сервере. Откат выполняется командами вручную, из checkout целевой версии на Mac:
+
+```
+git checkout <ветка-или-sha целевой версии>
+git push --force-with-lease heidi HEAD:main
+ssh heidi 'bash -s' < deploy/heidi/deploy.sh   # deploy.sh самой целевой версии
+```
+
+- На версию с ботом (WP-TG и новее): команды выше. `deploy.sh` целевой версии сам остановит и запустит бота.
+- На версию до бота (до WP-TG): перед командами выше выполнить `ssh heidi sudo systemctl stop second-opinion-bot`, иначе живой
+  процесс продолжит ходить в старый сервер без проверки ключа. Старый `deploy.sh` о боте не знает. Checkout удалит код
+  `apps/bot` (`.env` и `.state` в `.gitignore` останутся), после чего юнит пропускается по `ConditionPathExists=…/package.json`
+  (в том числе после перезагрузки). Совсем отключить юнит — root-шаг: `sudo systemctl disable second-opinion-bot`.
+- Вместо force-push можно сделать `git revert` нужных коммитов поверх текущего `main` и выкатить обычным `release.sh` (это
+  fast-forward). Для отката до WP-TG и здесь сначала нужен `systemctl stop second-opinion-bot`.
+- Если `--force-with-lease` отказал (`stale info`), значит, `main` на heidi ушёл вперёд с другой машины. Сначала `git fetch heidi`,
+  проверить, что откатываем именно то, что нужно, и повторить.
 
 ### Секреты
 
