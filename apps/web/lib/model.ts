@@ -77,14 +77,20 @@ function lastUserText(prompt: LanguageModelV4Prompt): string {
   }
   return "";
 }
-function lastToolResult(prompt: LanguageModelV4Prompt): { toolName: string; output: unknown } | null {
+/**
+ * thrown — инструмент упал (error-text/error-json: невалидный ввод или исключение в execute). На сайте блок есть: ReportToolUI рисует
+ * note--bad с замаскированным errorText «An error occurred.» (onError по умолчанию у toUIMessageStream). В боте заглушка «Собираю отчёт…»
+ * остаётся без правки (render.ts рисует только output-available). Русское объяснение сбоя — только текст «Инструмент вернул ошибку…»,
+ * поэтому MOCK говорит его текстом. Сайт и бот здесь расходятся (И3) — известное расхождение, см. план, «Выполнено (19.10.2026)».
+ */
+function lastToolResult(prompt: LanguageModelV4Prompt): { toolName: string; output: unknown; thrown: boolean } | null {
   const m = prompt[prompt.length - 1];
   if (m?.role !== "tool") return null;
   const p = m.content.find((c) => c.type === "tool-result");
   if (!p || p.type !== "tool-result") return null;
   const out = p.output as { type: string; value?: unknown };
-  if (out.type === "error-text" || out.type === "error-json") return { toolName: p.toolName, output: { error: "Инструмент вернул ошибку — попробуйте ещё раз." } };
-  return { toolName: p.toolName, output: out.type === "json" ? out.value : out.value ?? out };
+  if (out.type === "error-text" || out.type === "error-json") return { toolName: p.toolName, output: { error: "Инструмент вернул ошибку — попробуйте ещё раз." }, thrown: true };
+  return { toolName: p.toolName, output: out.type === "json" ? out.value : out.value ?? out, thrown: false };
 }
 
 /** Сценарий: по реплике пользователя — инструмент; по результату — короткий текст без чисел (как требует промпт). */
@@ -94,7 +100,12 @@ function script(prompt: LanguageModelV4Prompt): LanguageModelV4StreamPart[] {
     const d = tr.output as { status?: string; claim_line?: string | null; red_flags?: string[]; found?: boolean; title?: string; text?: string; error?: string };
     if (tr.toolName === "explain_term")
       return [...text(d.found ? `${d.title}. ${d.text}` : "Такого термина в глоссарии нет — спросите про НКД, оферту, дюрацию или флоатер."), finish("stop")];
-    if (d.error) return [...text(d.error), finish("stop")];
+    // {error}, который вернул сам инструмент (set_inputs без отчёта), уже на экране: блок инструмента на сайте (ReportToolUI) и правка
+    // заглушки в боте (render.ts). Повтор текстом показал бы фразу дважды — не повторяем (как карточку термина в гейте)
+    if (d.error) return tr.thrown ? [...text(d.error), finish("stop")] : [finish("stop")];
+    // err (ссылка без ISIN, сбой Мосбиржи) — сообщение уже в блоке ErrView на сайте и в блоке ветки в боте (renderBranch); общий шаблон
+    // «Отчёт собран…» ему противоречил бы, а повтор msg текстом дал бы дубль (как err в гейте)
+    if (d.status === "err") return [finish("stop")];
     if (d.status === "pick") return [...text("Нашлось несколько выпусков — выберите нужный в списке выше или уточните запрос."), finish("stop")];
     if (d.status === "notfound") return [...text("На Мосбирже такой бумаги не нашлось. Проверьте ISIN или название — или загрузите документ продавца, когда появится вход файлом."), finish("stop")];
     if (d.status === "no_price") return [...text("По этой бумаге сейчас нет биржевой цены: сделок не было. По какой цене вам предлагают купить? Напишите в процентах от номинала — пересчитаю доходность от неё."), finish("stop")];

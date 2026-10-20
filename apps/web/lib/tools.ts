@@ -53,7 +53,7 @@ export function makeTools(session: ChatSession) {
       "Пересчитывает ликвидность, комиссии, worst-case, флаг завышенной доходности и Truth Score. Требует, чтобы отчёт уже был собран.",
     inputSchema: inputsSchema,
     execute: async (inputs): Promise<ReportToolResult | { error: string }> => {
-      if (!session.result || !session.query) return { error: "Отчёт ещё не собран — сначала назови бумагу." };
+      if (!session.result || !session.query) return { error: "Отчёт ещё не собран — сначала назовите бумагу." };
       const result = await rebuild(session.query, session.result, inputs as ReportInputs);
       setResult(session, session.query, result);
       return { query: session.query, result };

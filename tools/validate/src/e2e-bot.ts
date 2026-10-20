@@ -332,6 +332,10 @@ try {
   await waitTurn(++turns);
   cs = outFor(CHAT.isin, s0);
   ok("после /new: новая сессия — «вложу 1 млн» уже не пересобирает отчёт RU000A10ASE2", cs.length > 0 && !cs.some((c) => textOf(c).includes("RU000A10ASE2")), show(cs));
+  // {error} set_inputs без отчёта — один раз: правка заглушки, без повтора текстом ассистента (дубль из отчёта WP-TG, исправлен 20.10)
+  const noReport = cs.filter((c) => visible(c).includes("Отчёт ещё не собран"));
+  ok("после /new: «Отчёт ещё не собран — сначала назовите бумагу.» — одно сообщение (правка заглушки), без повтора",
+    noReport.length === 1 && isEdit(noReport[0]) && visible(noReport[0]) === "Отчёт ещё не собран — сначала назовите бумагу.", show(cs));
 
   /* ═══ 6. Deep-link /start <payload> (ссылка d6) ═══ */
   step = "deep-link";

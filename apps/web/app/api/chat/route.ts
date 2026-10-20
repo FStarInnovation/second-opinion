@@ -12,7 +12,7 @@ import { chatModel, isMock, provider, modelLabel, callProviderOptions } from "@/
 import { inputsSchema, makeTools } from "@/lib/tools";
 import { SYSTEM_PROMPT } from "@/lib/prompt";
 import { getSession, MESSAGE_LIMIT } from "@/lib/session";
-import { runGate } from "@/lib/gate";
+import { runGate, visibleAssistantText } from "@/lib/gate";
 import { jevProvider } from "@/lib/jev";
 import { appendUsage, estimateCost, ANSWER_LOG_CHARS, USER_TEXT_LOG_CHARS } from "@/lib/usage-log";
 import { budgetState, countMessage, spend } from "@/lib/budget";
@@ -70,8 +70,8 @@ export async function POST(req: Request) {
   const stream = createUIMessageStream({
     originalMessages: messages,
     execute: async ({ writer }) => {
-      /* 1. Jev-гейт */
-      const gate = text ? await runGate(writer, session, text, textOf(lastAssistant) || null) : { handled: false, decision: null, jevUsage: [] };
+      /* 1. Jev-гейт. lastAssistant — что пользователь видел: текст, а у хода только с блоком ошибки — её сообщение */
+      const gate = text ? await runGate(writer, session, text, visibleAssistantText(lastAssistant) || null) : { handled: false, decision: null, jevUsage: [] };
       // Все вызовы Jev реплики — в дневной бюджет (H.7): маршрут (decision) и разбор вводов гейтом (тип обещания, parseInputs)
       const jevCalls = [...(gate.decision?.usage ? [gate.decision.usage] : []), ...gate.jevUsage];
       const jevIn = jevCalls.reduce((s, u) => s + (u.inputTokens ?? 0), 0);

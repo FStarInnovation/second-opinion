@@ -9,7 +9,7 @@
  * и не применяет ни прошлые, ни со страницы, а просит написать отдельно.
  * Инструмент отчёта пишется в поток в два шага: начало — до сборки («Собираю отчёт…»), результат — после, тем же toolCallId.
  */
-import type { UIMessageStreamWriter } from "ai";
+import type { UIMessage, UIMessageStreamWriter } from "ai";
 import type { BondReportT, BuildResultT, ReportInputs } from "@so/engine/contract";
 import { CONFIG } from "@so/engine/config";
 import { fmtMax, rub } from "@so/engine/format";
@@ -27,11 +27,32 @@ export interface GateOutcome { handled: boolean; decision: RouteDecision; jevUsa
 
 const id = () => "gate_" + Math.random().toString(36).slice(2, 10);
 
+/** Пустая строка — без text-части: сказать нечего (ошибка уже в блоке ветки, см. reportText; lastAssistant следующего хода — visibleAssistantText) */
 function writeText(w: UIMessageStreamWriter, s: string) {
+  if (!s.trim()) return;
   const tid = id();
   w.write({ type: "text-start", id: tid });
   w.write({ type: "text-delta", id: tid, delta: s });
   w.write({ type: "text-end", id: tid });
+}
+
+/**
+ * Что пользователь увидел от ассистента (lastAssistant для runGate, route.ts): текст ответа, а без text-части — сообщение ошибки
+ * из блока инструмента ({error} от set_inputs без отчёта или result.kind === "err"). Ход только с блоком ошибки (err гейта, {error}
+ * set_inputs, err после resolve_security у MOCK) — тоже ответ ассистента: «почему?» после него — уточнение (out_of_scope → модели),
+ * и Jev получает в last_assistant текст ошибки, а не "". Читает только сообщение из тела запроса — тело не меняется (И5).
+ */
+export function visibleAssistantText(m: UIMessage | undefined): string {
+  if (!m) return "";
+  const text = m.parts.filter((p) => p.type === "text").map((p) => (p as { text: string }).text).join(" ").trim();
+  if (text) return text;
+  return m.parts.flatMap((p) => {
+    const o = (p as { output?: { error?: unknown; result?: { kind?: unknown; msg?: unknown } } }).output;
+    if (!p.type.startsWith("tool-") || !o) return [];
+    if (typeof o.error === "string") return [o.error];
+    if (o.result?.kind === "err" && typeof o.result.msg === "string") return [o.result.msg];
+    return [];
+  }).join(" ").trim();
 }
 
 const BUILD_FAILED = "Не получилось собрать отчёт — попробуйте ещё раз через минуту.";
@@ -115,7 +136,7 @@ function reportText(res: BuildResultT, origin?: InputsOrigin): string {
   if (res.kind === "notfound") return res.isinValid
     ? "ISIN корректный, но на Мосбирже бумага не торгуется — внебиржевой или погашенный выпуск. Такие мы пока не проверяем."
     : "На Мосбирже такой бумаги не нашлось. Проверьте ISIN или название.";
-  if (res.kind === "err") return res.msg;
+  if (res.kind === "err") return ""; // msg уже в блоке ветки (ErrView на сайте / renderBranch в боте) — не повторяем
   const r = res.report;
   const carried = origin ? carriedText(r, origin) : "";
   const tail = origin?.named ? SEPARATELY : "";

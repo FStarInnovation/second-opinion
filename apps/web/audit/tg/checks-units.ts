@@ -419,7 +419,7 @@ export function dangerInputs(veb: BuildResultT): Tg8Input[] {
   out.push({ label: "синтетика: explain_term found, title/text с <b>&\"", need: "html", visible: [[`Дюрация ${DANGER}`], [`Срок ${DANGER} в годах`]],
     message: toolMessage("danger-term", "explain_term", { term: "дюрация" }, { found: true, id: "duration", title: `Дюрация ${DANGER}`, text: `Срок ${DANGER} в годах` }) });
   out.push({ label: "set_inputs → {error} (текст ошибки)", need: "op",
-    message: toolMessage("set-inputs-error", "set_inputs", { k_pct: 0.3 }, { error: "Отчёт ещё не собран — сначала назови бумагу." }) });
+    message: toolMessage("set-inputs-error", "set_inputs", { k_pct: 0.3 }, { error: "Отчёт ещё не собран — сначала назовите бумагу." }) });
   return out;
 }
 

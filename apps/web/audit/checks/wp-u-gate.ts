@@ -32,6 +32,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "@so/engine";
 import type { BondReportT, BuildResultT, ReportInputs } from "@so/engine/contract";
+import type { UIMessage } from "ai";
 import { fmt } from "@so/engine/format";
 import { findTerm, GLOSSARY, type Term } from "../../lib/glossary";
 import { promiseByRules, parsePromise } from "../../lib/jev";
@@ -246,16 +247,36 @@ async function scU6(): Promise<U6Out> {
   return { threshold: jevThreshold(), rows };
 }
 
-interface U7Out { threshold: number; rows: { hasReport: boolean; lastAssistant: string; t: Turn }[] }
+/** blockOnly — прошлый ход ассистента только с блоком ошибки, без text-части; lastAssistant — visibleAssistantText этого сообщения, как в route.ts */
+interface U7Row { hasReport: boolean; said: string; lastAssistant: string; blockOnly?: { label: string; msg: string }; t: Turn }
+interface U7Out { threshold: number; rows: U7Row[] }
 async function scU7(): Promise<U7Out> {
   const gate = await importGate();
   const { jevThreshold } = await importJev();
+  const { ISS_DOWN_MSG } = await import("../../lib/engine");
   const fx = liveReport("live_ofz26244.json");
-  const rows: U7Out["rows"] = [];
+  const rows: U7Row[] = [];
   for (const hasReport of [true, false]) {
     setJev({ intent: ["out_of_scope", 0.9], mentions: 0.05 });
     const last = hasReport ? LAST_REPORT : LAST_MODEL;
-    rows.push({ hasReport, lastAssistant: last, t: await turn(gate, mkSession(`u7-${hasReport}`, hasReport ? fx : null), "ты уверен?", last) });
+    rows.push({ hasReport, said: "ты уверен?", lastAssistant: last, t: await turn(gate, mkSession(`u7-${hasReport}`, hasReport ? fx : null), "ты уверен?", last) });
+  }
+  // Ход только с блоком ошибки (err гейта без текста после правки дубля 20.10; {error} set_inputs без отчёта) — тоже ответ ассистента:
+  // «почему?» после него — уточнение, а не «не по теме»; Jev получает текст ошибки, а не ""
+  const NO_REPORT = "Отчёт ещё не собран — сначала назовите бумагу.";
+  const blockOnly: { label: string; msg: string; part: Record<string, unknown> }[] = [
+    { label: "err resolve_security (Мосбиржа не отвечает)", msg: ISS_DOWN_MSG, part: {
+      type: "tool-resolve_security", toolCallId: "u7-err", state: "output-available", input: { query: "RU000A1038V6" },
+      output: { query: "RU000A1038V6", result: { kind: "err", query: "RU000A1038V6", msg: ISS_DOWN_MSG } } } },
+    { label: "{error} set_inputs без отчёта", msg: NO_REPORT, part: {
+      type: "tool-set_inputs", toolCallId: "u7-noreport", state: "output-available", input: { position_size: 1_000_000 }, output: { error: NO_REPORT } } },
+  ];
+  for (const b of blockOnly) {
+    setJev({ intent: ["out_of_scope", 0.9], mentions: 0.05 });
+    const msg = { id: "u7-a", role: "assistant", parts: [{ type: "step-start" }, b.part] } as unknown as UIMessage;
+    const last = gate.visibleAssistantText(msg);
+    rows.push({ hasReport: false, said: "почему?", lastAssistant: last, blockOnly: { label: b.label, msg: b.msg },
+      t: await turn(gate, mkSession(`u7-block-${rows.length}`, null), "почему?", last || null) });
   }
   return { threshold: jevThreshold(), rows };
 }
@@ -506,15 +527,33 @@ const U6: Check = {
 const TEMPLATE_REFUSAL = /помогаю только с проверкой облигаций/i;
 const U7: Check = {
   id: "U.7", wp: "U", kind: "fixture",
-  title: "Уточнение «ты уверен?» после ответа ассистента (Jev out_of_scope 0,9) — не шаблонный отказ «Я помогаю только с проверкой облигаций…» (передача модели или ответ по контексту допустимы); с отчётом и без",
+  title: "Уточнение «ты уверен?» после ответа ассистента (Jev out_of_scope 0,9) — не шаблонный отказ «Я помогаю только с проверкой облигаций…» (передача модели или ответ по контексту допустимы); с отчётом и без. " +
+    "И после хода только с блоком ошибки, без текста (err resolve_security «Мосбиржа не отвечает», {error} set_inputs без отчёта): lastAssistant = visibleAssistantText сообщения = текст ошибки, " +
+    "«почему?» передаётся модели, в Jev уходит last_assistant = текст ошибки; route.ts передаёт в runGate visibleAssistantText(lastAssistant)",
   run(): Verdict {
     const { out: o, blocked } = scenario<U7Out>("U.7");
-    const rows = o.rows.map((r) => ({ ...r, refusal: r.t.handled && TEMPLATE_REFUSAL.test(r.t.text) }));
-    const bad = rows.filter((r) => r.refusal);
-    const detail = `порог Jev ${o.threshold}; ` + rows.map((r) =>
-      `отчёт ${r.hasReport ? "есть" : "нет"}, lastAssistant ${q(r.lastAssistant, 60)} (в Jev ушло last_assistant ${r.t.jevCalls[0]?.lastAssistant ? `${r.t.jevCalls[0].lastAssistant.length} симв.` : "пусто"}): ` +
-      `маршрут ${route(r.t)} → handled=${r.t.handled}, ${r.t.handled ? `текст ${q(r.t.text, 120)}` : "передано модели"}${r.refusal ? " — ШАБЛОННЫЙ ОТКАЗ" : " ок"}`).join(" | ") + blockedNote(blocked);
-    return bad.length === 0 ? pass(detail) : fail(detail);
+    const rows = o.rows.map((r) => {
+      const refusal = r.t.handled && TEMPLATE_REFUSAL.test(r.t.text);
+      const jevLast = r.t.jevCalls[0]?.lastAssistant ?? null;
+      const why = r.blockOnly ? [
+        r.lastAssistant !== r.blockOnly.msg ? `lastAssistant ${q(r.lastAssistant, 60)} ≠ сообщению блока` : "",
+        r.t.handled ? "handled=true (ожид. передача модели)" : "",
+        jevLast !== r.blockOnly.msg ? `в Jev ушло last_assistant ${q(jevLast ?? "", 60)} ≠ сообщению блока` : "",
+      ].filter(Boolean) : [];
+      return { ...r, refusal, jevLast, why };
+    });
+    // route.ts — именно этот helper в аргументе runGate (иначе ход только с блоком снова даёт lastAssistant = null)
+    const routeSrc = readSrc("apps/web/app/api/chat/route.ts").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+    const routeOk = /runGate\(\s*writer\s*,\s*session\s*,\s*text\s*,\s*visibleAssistantText\(\s*lastAssistant\s*\)/.test(routeSrc);
+    const bad = rows.filter((r) => r.refusal || r.why.length);
+    const detail = `порог Jev ${o.threshold}; ` + rows.map((r) => (r.blockOnly
+      ? `после хода только с блоком (${r.blockOnly.label}): lastAssistant = visibleAssistantText → ${q(r.lastAssistant, 60)}; ${q(r.said)}: ` +
+        `маршрут ${route(r.t)} → handled=${r.t.handled}, ${r.t.handled ? `текст ${q(r.t.text, 120)}` : "передано модели"}, в Jev ушло last_assistant ${q(r.jevLast ?? "", 60)}` +
+        `${r.refusal ? " — ШАБЛОННЫЙ ОТКАЗ" : ""}${r.why.length ? ` — ${r.why.join("; ")}` : " ок"}`
+      : `отчёт ${r.hasReport ? "есть" : "нет"}, lastAssistant ${q(r.lastAssistant, 60)} (в Jev ушло last_assistant ${r.jevLast ? `${r.jevLast.length} симв.` : "пусто"}): ` +
+        `маршрут ${route(r.t)} → handled=${r.t.handled}, ${r.t.handled ? `текст ${q(r.t.text, 120)}` : "передано модели"}${r.refusal ? " — ШАБЛОННЫЙ ОТКАЗ" : " ок"}`)).join(" | ") +
+      ` | route.ts: runGate(writer, session, text, visibleAssistantText(lastAssistant) …) ${routeOk ? "есть" : "НЕТ — lastAssistant считается не по видимому тексту"}` + blockedNote(blocked);
+    return bad.length === 0 && routeOk ? pass(detail) : fail(detail);
   },
 };
 
