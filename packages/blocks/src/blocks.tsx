@@ -8,7 +8,7 @@
  * Корневой элемент помечен data-block=<id> — по нему валидатор сверяет отрисованное с panels.
  */
 import { useState, type FormEvent } from "react";
-import { ReportInputsSchema, type BondReportT, type ReportInputs } from "@so/engine/contract";
+import type { BondReportT, ReportInputs } from "@so/engine/contract";
 import { CONFIG } from "@so/engine/config";
 import { fmtMax } from "@so/engine/format";
 import { WEB } from "@so/present/copy";
@@ -89,10 +89,6 @@ export function PriceLine({ r }: { r: R }) {
   return <p className="cap" data-block="price_line">{presentSection(r, "price_line").lines[0]}</p>;
 }
 
-/** Цена предложения — по той же схеме, что /api/report, /check и инструменты ассистента (И4): иначе цена 0 < p < 1 ушла бы
- *  на сервер и вернулась ошибкой */
-const OFFER_PRICE = ReportInputsSchema.shape.offer_price_pct;
-
 /* ask_price — ветка «нет цены»: спросить цену предложения, потом полная пересборка движком */
 export function AskPrice({ r, onSubmit, unavailableNote }: {
   r: R; onSubmit?: (pricePct: number) => void; unavailableNote?: string;
@@ -103,7 +99,11 @@ export function AskPrice({ r, onSubmit, unavailableNote }: {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const n = Number(v.replace(/\s/g, "").replace(",", "."));
-    if (!OFFER_PRICE.safeParse(n).success || n == null) { setMsg(WEB.askPriceInvalid); return; }
+    // Пределы цены — CONFIG.inputs.offerPricePct, та же константа, из которой строится ReportInputsSchema.offer_price_pct для
+    // /api/report, /check и инструментов ассистента (И4): иначе цена 0 < p < 1 ушла бы на сервер и вернулась ошибкой. Смысл как
+    // у схемы — конечное число, границы включительно; схему (zod) клиент не импортирует
+    const { min, max } = CONFIG.inputs.offerPricePct;
+    if (!(Number.isFinite(n) && n >= min && n <= max)) { setMsg(WEB.askPriceInvalid); return; }
     if (!onSubmit) { setMsg(s.note ?? WEB.askPriceUnavailable); return; }
     setMsg(null);
     onSubmit(n);

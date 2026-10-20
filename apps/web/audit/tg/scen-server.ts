@@ -16,7 +16,10 @@
  *                     и по ходу веба и бота в новых сессиях (TG.G1, TG.12);
  *   tg13            — таблица значений ввода через /api/report (GET, POST), body.inputs /api/chat, /check (CheckPage как функция),
  *                     initialOf, decodeStartPayload;
- *                     ReportInputsSchema из @so/engine/contract и тождество с tools.inputsSchema (TG.13);
+ *                     ReportInputsSchema из @so/engine/contract и тождество с tools.inputsSchema; пределы цены: константа
+ *                     CONFIG.inputs.offerPricePct, схема и форма AskPrice (submit формы, SSR react-dom/server) на min−ε/min/внутри/max/max+ε;
+ *                     AskPrice при подменённой на месте константе (сужение и расширение, blocks.tsx загружается заново);
+ *                     плотная сверка схемы с константой: ~210 точек до 0,001 (seed), принять ⇔ min ≤ v ≤ max (TG.13);
  *   tg14            — текст гейта на 13 golden-запросах (вводы кейса — как вводы /check: session.pendingInputs) и экспортируемая
  *                     функция текста отчёта на veb с переставленным truth_score.top3 (TG.14 (б), (в));
  *   health-version  — запускать с SO_APP_DIR: импорт app/api/health/route, перезапись VERSION на HEALTH_VERSION_B, локальный и
@@ -276,13 +279,46 @@ export interface Row13 {
   check: Verdict13;
   initialOf: Verdict13 | null; decode: Verdict13 | null;
 }
+/**
+ * TG.13, пределы цены (И4, решение владельца 20.10.2026): точка проверки на границах константы CONFIG.inputs.offerPricePct.
+ * want — ожидание по константе (true — принять, false — отклонить; null — пустое поле: схема допускает null, форма — нет);
+ * schema — offer_price_pct.safeParse(v).success (null — не сравнивается); ask — форма AskPrice: true — onSubmit вызван с тем же
+ * числом, false — не вызван (сообщение формы, запроса нет), null — иное.
+ */
+export interface PriceEdge { label: string; want: boolean | null; schema: boolean | null; ask: boolean | null; field: string; note: string }
+/**
+ * TG.13, AskPrice следует за константой (ревью 20.10, F2): границы CONFIG.inputs.offerPricePct временно подменяются на месте
+ * (Object.assign в тот же объект: псевдоним `const P = CONFIG.inputs.offerPricePct` на верхнем уровне законен, подмена объекта
+ * целиком дала бы на нём ложный RED), blocks.tsx загружается заново (?query — свежий экземпляр модуля, поэтому законно и чтение
+ * границ на верхнем уровне: `const { min, max } = CONFIG.inputs.offerPricePct`), и форма AskPrice проверяется у новых границ —
+ * сужение и расширение. Свои границы мимо константы (помощник с литералами в другом модуле, `LIM = 3e2`, затенение `max`)
+ * за подменой не идут. lim — подменённые границы; want — ожидание по ним; ask — как у PriceEdge.
+ */
+export interface PriceFollow { lim: { min: number; max: number }; label: string; v: number; want: boolean; ask: boolean | null; note: string }
 export interface Tg13Out {
   contract: { ok: boolean; detail: string };
   toolsSame: boolean | null;
   toolsHasInputsSchema: boolean;
   entry: { ok: boolean; detail: string };
   rows: Row13[];
+  price: { constant: { ok: boolean; detail: string }; ask: { ok: boolean; detail: string }; edges: PriceEdge[]; follow: PriceFollow[]; dense: PriceDense | null };
 }
+/** Шаг проверки у границ константы: точность формы AskPrice — два знака (поле заполняется fmtMax(·, 2)) */
+export const PRICE_EPS = 0.01;
+/**
+ * TG.13, плотная сверка схемы с константой (ревью 20.10, раунд 2, R1r2-1). Форма AskPrice и схема реализованы раздельно, поэтому
+ * уточнение схемы внутри [min, max] (multipleOf, step, int, refine, …) разошлось бы с формой: форма пропускает цену, сервер
+ * отвечает 4xx. Схема — offer_price_pct.safeParse(v) и ReportInputsSchema.safeParse({ offer_price_pct: v }) — должна принимать
+ * ⇔ min ≤ v ≤ max на фиксированных точках (до 0,001, плюс ±Infinity) и на PRICE_DENSE_N точках с seed PRICE_DENSE_SEED: 1–3 знака,
+ * половина внутри [min, max], четверть в [min−50, min), четверть в (max, max+100]. Форма AskPrice на этих точках не прогоняется:
+ * проба заполняет поле через fmtMax(·, 2), и трёхзначные значения округлились бы; связку «AskPrice ≡ константа» держат статика
+ * TG.7 и подмена константы (PriceFollow). v — String(число): ±Infinity переживает JSON. field/obj — принято полем и объектом
+ * (null — safeParse бросил).
+ */
+export interface PriceDenseMiss { v: string; want: boolean; field: boolean | null; obj: boolean | null }
+export interface PriceDense { seed: number; n: number; inside: number; outside: number; fixed: number; miss: PriceDenseMiss[] }
+export const PRICE_DENSE_SEED = 20261020;
+export const PRICE_DENSE_N = 200;
 type ZodLike = { safeParse(v: unknown): { success: boolean } };
 type ReportRouteMod = { GET(r: Request): Promise<Response>; POST(r: Request): Promise<Response> };
 type CheckPageMod = { default(p: { searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<unknown> };
@@ -310,6 +346,143 @@ async function reportVerdict(res: Response, field: Field, v: number): Promise<Ve
   if (res.status === 200 && j?.kind === "report" && got === v) return { verdict: "accepted", note: `HTTP 200 report, inputs.${field}=${String(got)}` };
   if (res.status >= 400 && res.status < 500 && j?.kind === "err") return { verdict: "rejected", note: `HTTP ${res.status} err «${String(j.msg ?? "").slice(0, 60)}»` };
   return { verdict: "other", note: `HTTP ${res.status} kind=${String(j?.kind)}${j?.kind === "report" ? `, inputs.${field}=${JSON.stringify(got ?? null)}` : ""}${j?.msg ? ` «${String(j.msg).slice(0, 60)}»` : ""}` };
+}
+
+type AskPriceFn = (p: { r: BondReportT; onSubmit?: (pricePct: number) => void; unavailableNote?: string }) => unknown;
+
+/**
+ * Форма AskPrice как в браузере, без DOM: компонент вызывается внутри пробы при renderToStaticMarkup (хуки — у пробы), поле
+ * заполнено из r.inputs.offer_price_pct (fmtMax(·, 2) — как при пересборке отчёта по цене), обработчик onSubmit формы
+ * вызывается после рендера. setState после рендера на сервере — no-op, поэтому наблюдаемо только «onSubmit вызван или нет».
+ */
+type AskProbe = (v: number | null) => { ask: boolean | null; field: string; note: string };
+async function askPriceProbe(query?: string): Promise<{ ok: true; probe: AskProbe } | { ok: false; detail: string }> {
+  const React = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const g = globalThis as unknown as { React?: unknown };
+  g.React ??= React; // packages/blocks транслируется классическим JSX (как в record-ssr.ts)
+  const blocks = await tryImport<{ AskPrice: AskPriceFn }>(repoAbs("packages/blocks/src/blocks.tsx"), "P2", { need: ["AskPrice"], ...(query ? { query } : {}) });
+  if (!blocks.ok) return { ok: false, detail: blocks.detail };
+  const golden = repoAbs("packages/engine/golden/expected/cherk1p6.json");
+  const res = JSON.parse(fs.readFileSync(golden, "utf8")) as BuildResultT;
+  if (res.kind !== "report") return { ok: false, detail: `${path.relative(REPO_ROOT, golden)}: ожидался kind=report, получено ${res.kind}` };
+  const base = res.report;
+  const probe: AskProbe = (v) => {
+    const r = { ...base, inputs: { ...base.inputs, offer_price_pct: v } } as BondReportT;
+    const sent: number[] = [];
+    let submit: unknown = null;
+    const Probe = () => {
+      const el = blocks.mod.AskPrice({ r, onSubmit: (n: number) => { sent.push(n); } }) as { props?: { onSubmit?: unknown } } | null;
+      submit = el?.props?.onSubmit ?? null;
+      return el as never;
+    };
+    let html: string;
+    try { html = renderToStaticMarkup(React.createElement(Probe)); }
+    catch (e) { return { ask: null, field: "?", note: `рендер AskPrice бросил: ${errStr(e)}` }; }
+    const input = /<input\b[^>]*\bid="ask-price"[^>]*>/.exec(html)?.[0] ?? "";
+    const field = `поле «${/\bvalue="([^"]*)"/.exec(input)?.[1] ?? "?"}»`;
+    if (typeof submit !== "function") return { ask: null, field, note: `${field}: у формы AskPrice нет onSubmit` };
+    try { (submit as (e: { preventDefault(): void }) => void)({ preventDefault() {} }); }
+    catch (e) { return { ask: null, field, note: `${field}: submit бросил ${errStr(e)}` }; }
+    if (!sent.length) return { ask: false, field, note: `${field} → отклонено, onSubmit не вызван` };
+    if (sent.length === 1 && Object.is(sent[0], v)) return { ask: true, field, note: `${field} → onSubmit(${sent[0]})` };
+    return { ask: null, field, note: `${field} → onSubmit(${sent.join(", ")}), ожидалось ${String(v)}` };
+  };
+  return { ok: true, probe };
+}
+
+/** mulberry32: детерминированный генератор на [0, 1) — точки плотной сверки одинаковы от прогона к прогону */
+const mulberry32 = (seed: number) => () => {
+  seed = (seed + 0x6d2b79f5) | 0;
+  let t = seed;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
+/** Плотная сверка схемы с константой (PriceDense): одна схема, без формы */
+function priceDense(schema: ZodLike & { shape: Record<string, ZodLike> }, min: number, max: number): PriceDense {
+  const r3 = (x: number) => Math.round(x * 1000) / 1000;
+  const fixed = [...new Set([r3(min + 0.001), r3(max - 0.001), 1.37, 98.3, 98.555, 150, 150.123, 150.125, 299.999, Infinity, -Infinity])];
+  const rnd = mulberry32(PRICE_DENSE_SEED);
+  const gen: number[] = [];
+  for (let i = 0; i < PRICE_DENSE_N; i++) {
+    const q = 10 ** (1 + Math.floor(rnd() * 3)); // 1–3 знака после запятой
+    const u = rnd();
+    const x = i % 2 === 0 ? min + u * (max - min) : i % 4 === 1 ? min - 50 + u * 50 : max + u * 100;
+    gen.push(Math.round(x * q) / q); // то же число, что Number("150.125") из ввода
+  }
+  const pts = [...new Set([...fixed, ...gen])];
+  const miss: PriceDenseMiss[] = [];
+  let inside = 0;
+  for (const v of pts) {
+    const want = v >= min && v <= max;
+    if (want) inside++;
+    let field: boolean | null = null, obj: boolean | null = null;
+    try { field = schema.shape.offer_price_pct.safeParse(v).success; } catch { field = null; }
+    try { obj = schema.safeParse({ offer_price_pct: v }).success; } catch { obj = null; }
+    if (field !== want || obj !== want) miss.push({ v: String(v), want, field, obj });
+  }
+  return { seed: PRICE_DENSE_SEED, n: pts.length, inside, outside: pts.length - inside, fixed: fixed.length, miss };
+}
+
+/**
+ * Пределы цены: константа из @so/engine/config, схема offer_price_pct и форма AskPrice на min−ε/min/max/max+ε, дробной точке внутри
+ * (принята — только если onSubmit получил то же число: Math.round и прочие подмены значения → RED), «не число», пустое поле;
+ * затем AskPrice при подменённой константе (PriceFollow)
+ */
+async function tg13Price(schema: (ZodLike & { shape: Record<string, ZodLike> }) | null): Promise<Tg13Out["price"]> {
+  const cfg = (await import("@so/engine/config")) as unknown as { CONFIG: { inputs?: { offerPricePct?: { min?: unknown; max?: unknown } } } };
+  const c = cfg.CONFIG.inputs?.offerPricePct;
+  const min = c?.min, max = c?.max;
+  const constOk = typeof min === "number" && typeof max === "number" && Number.isFinite(min) && Number.isFinite(max) && min < max;
+  const constant = constOk ? { ok: true, detail: `CONFIG.inputs.offerPricePct = { min: ${min}, max: ${max} }` }
+    : { ok: false, detail: `в @so/engine/config нет CONFIG.inputs.offerPricePct с конечными min < max: ${JSON.stringify(c ?? null)}` };
+  const ask = await askPriceProbe();
+  const askInfo = ask.ok ? { ok: true, detail: "AskPrice из packages/blocks/src/blocks.tsx, отчёт golden cherk1p6" } : { ok: false, detail: ask.detail };
+  if (!constOk) return { constant, ask: askInfo, edges: [], follow: [], dense: null };
+  // плотная сверка схемы с константой — до её подмены ниже
+  const dense = schema ? priceDense(schema, min, max) : null;
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  /** Дробная точка строго внутри [lo, hi]: 98,5 (типичная цена), иначе середина с половиной */
+  const inner = (lo: number, hi: number) => (lo < 98.5 && 98.5 < hi ? 98.5 : r2(Math.floor((lo + hi) / 2) + 0.5));
+  const pts: { label: string; v: number | null; want: boolean | null }[] = [
+    { label: `min−ε (${r2(min - PRICE_EPS)})`, v: r2(min - PRICE_EPS), want: false },
+    { label: `min (${min})`, v: min, want: true },
+    { label: `внутри (${inner(min, max)})`, v: inner(min, max), want: true },
+    { label: `max (${max})`, v: max, want: true },
+    { label: `max+ε (${r2(max + PRICE_EPS)})`, v: r2(max + PRICE_EPS), want: false },
+    { label: "не число", v: NaN, want: false },
+    { label: "пустое поле", v: null, want: null },
+  ];
+  const edges = pts.map((p): PriceEdge => {
+    let sv: boolean | null = null;
+    if (p.want !== null && schema) { try { sv = schema.shape.offer_price_pct.safeParse(p.v).success; } catch { sv = null; } }
+    const a = ask.ok ? ask.probe(p.v) : { ask: null, field: "?", note: "AskPrice не загружен" };
+    return { label: p.label, want: p.want, schema: sv, ask: a.ask, field: a.field, note: a.note };
+  });
+  // AskPrice следует за константой: сужение (свои границы шире константы — помощник 1..300 вместо неё) и расширение (свои
+  // границы внутри константы — LIM = 300, затенённый max); на каждом наборе min−ε, min, точка внутри, max, max+ε
+  const follow: PriceFollow[] = [];
+  if (ask.ok) {
+    const narrow = min + 1 < max - 50 ? { min: r2(min + 1), max: r2(max - 50) } : { min: r2(min + (max - min) / 4), max: r2(max - (max - min) / 4) };
+    const wide = { min: r2(min - 0.5), max: r2(max + 100) };
+    const box = cfg.CONFIG.inputs!.offerPricePct as { min: number; max: number };
+    const saved = { ...box };
+    try {
+      for (const [i, lim] of [narrow, wide].entries()) {
+        Object.assign(box, lim);
+        const mid = lim === wide ? r2(Math.floor((max + lim.max) / 2) + 0.5) : inner(lim.min, lim.max); // у расширения — между старым и новым max
+        const pts: [number, boolean][] = [[r2(lim.min - PRICE_EPS), false], [lim.min, true], [mid, true], [lim.max, true], [r2(lim.max + PRICE_EPS), false]];
+        const fresh = await askPriceProbe(`tg13-follow=${i}`);
+        for (const [v, want] of pts) {
+          const a = fresh.ok ? fresh.probe(v) : { ask: null, note: `blocks.tsx заново не загрузился: ${fresh.detail}` };
+          follow.push({ lim: { ...lim }, label: `{ min: ${lim.min}, max: ${lim.max} } ${v}`, v, want, ask: a.ask, note: a.note });
+        }
+      }
+    } finally { Object.assign(box, saved); }
+  }
+  return { constant, ask: askInfo, edges, follow, dense };
 }
 
 async function tg13(): Promise<Tg13Out> {
@@ -399,6 +572,7 @@ async function tg13(): Promise<Tg13Out> {
     toolsHasInputsSchema: tools.inputsSchema !== undefined,
     entry: { ok: entryLoad.ok, detail: entryLoad.ok ? "есть" : entryLoad.detail },
     rows,
+    price: await tg13Price(schema),
   };
 }
 

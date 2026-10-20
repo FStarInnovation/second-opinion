@@ -422,7 +422,13 @@ const BLOCK_FILES = ["blocks.tsx", "branches.tsx", "ReportView.tsx", "ui.tsx"] a
 const UI_MOVED = ["pct2", "pctMax", "cap1", "scoreTone", "liquidityTone"] as const;
 const FMT_NAMES = ["fmt", "fmtMax", "CONFIG"] as const;
 const FMT_OWNERS = ["InputsPanel", "AskPrice"] as const;
-const PRICE_SCHEMA = "ReportInputsSchema.shape.offer_price_pct";
+/** Константа пределов цены предложения (И4, решение владельца 20.10.2026): из неё строится ReportInputsSchema.offer_price_pct
+ *  (contract.ts) и проверка AskPrice; значение схемы (zod) клиентский код @so/blocks не импортирует */
+const PRICE_CONST = "CONFIG.inputs.offerPricePct";
+const PRICE_CONFIG_SPEC = "@so/engine/config";
+const CONFIG_REL = "packages/engine/src/config.ts";
+const CONTRACT_REL = "packages/engine/src/contract.ts";
+const CONTRACT_SPEC = "@so/engine/contract";
 const CMP_OPS = new Set([
   ts.SyntaxKind.LessThanToken, ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.GreaterThanEqualsToken,
   ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken,
@@ -481,6 +487,199 @@ function ownedSet(sf: ts.SourceFile, roots: readonly string[]): { decls: Map<str
   return { decls, owned };
 }
 
+/* ───── константа пределов цены (TG.7 (5)) ───── */
+
+/** Обёртки, не меняющие значения: скобки, `as`, `satisfies`, `!` */
+const unwrapExpr = (e: ts.Node): ts.Node => {
+  let x = e;
+  while (ts.isParenthesizedExpression(x) || ts.isAsExpression(x) || ts.isSatisfiesExpression(x) || ts.isNonNullExpression(x)) x = x.expression;
+  return x;
+};
+/** Инициализатор свойства объектного литерала по имени (без обёрток) */
+const propInit = (o: ts.ObjectLiteralExpression, name: string): ts.Node | null => {
+  for (const pr of o.properties)
+    if (ts.isPropertyAssignment(pr) && (ts.isIdentifier(pr.name) || ts.isStringLiteral(pr.name)) && pr.name.text === name) return unwrapExpr(pr.initializer);
+  return null;
+};
+/** Значения константы из исходника config.ts: `CONFIG = { …, inputs: { offerPricePct: { min: <число>, max: <число> } } }` */
+function priceConstValues(root: string): { ok: true; min: number; max: number; line: number } | { ok: false; detail: string } {
+  const abs = path.join(root, CONFIG_REL);
+  if (!isFile(abs)) return { ok: false, detail: `нет ${CONFIG_REL}` };
+  const p = parseSource(abs);
+  let opp: ts.ObjectLiteralExpression | null = null;
+  walk(p.sf, (n) => {
+    if (opp || !ts.isVariableDeclaration(n) || !ts.isIdentifier(n.name) || n.name.text !== "CONFIG" || !n.initializer) return;
+    const cfg = unwrapExpr(n.initializer);
+    const inputs = ts.isObjectLiteralExpression(cfg) ? propInit(cfg, "inputs") : null;
+    const o = inputs && ts.isObjectLiteralExpression(inputs) ? propInit(inputs, "offerPricePct") : null;
+    if (o && ts.isObjectLiteralExpression(o)) opp = o;
+  });
+  const found = opp as ts.ObjectLiteralExpression | null;
+  if (!found) return { ok: false, detail: `в ${CONFIG_REL} нет ${PRICE_CONST} = { min, max }` };
+  const num = (k: string) => { const e = propInit(found, k); return e && ts.isNumericLiteral(e) ? Number(e.text) : null; };
+  const [min, max] = [num("min"), num("max")];
+  if (min == null || max == null || !(min < max)) return { ok: false, detail: `${CONFIG_REL}: ${PRICE_CONST} = ${oneLine(nodeText(p, found))} — нужны числовые литералы min < max` };
+  return { ok: true, min, max, line: lineAt(p.sf, found.getStart(p.sf)) };
+}
+
+type PriceRef = "obj" | "min" | "max";
+/**
+ * Выражения файла, дающие константу пределов цены или её границу: `CONFIG.inputs.offerPricePct[.min|.max]`, где CONFIG — значение,
+ * импортированное из модуля config (`{ CONFIG }`, `{ CONFIG as X }`, `* as ns` → `ns.CONFIG`), и псевдонимы любой глубины:
+ * `const P = CONFIG.inputs.offerPricePct`, `const lo = P.min`, `const { min, max: hi } = P`. Затенение имён не учитывается.
+ */
+function priceRefs(p: Parsed, specs: readonly string[]): { kind: (e: ts.Node) => PriceRef | null; bindings: string[] } {
+  const bases = new Set<string>();
+  const bindings: string[] = [];
+  for (const st of p.sf.statements) {
+    if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier) || !specs.includes(st.moduleSpecifier.text)) continue;
+    const c = st.importClause;
+    if (!c || c.isTypeOnly) continue;
+    const nb = c.namedBindings;
+    if (nb && ts.isNamespaceImport(nb)) { bases.add(`${nb.name.text}.${PRICE_CONST}`); bindings.push(`* as ${nb.name.text} из «${st.moduleSpecifier.text}»`); }
+    else if (nb && ts.isNamedImports(nb))
+      for (const e of nb.elements)
+        if (!e.isTypeOnly && (e.propertyName ?? e.name).text === "CONFIG") {
+          bases.add(PRICE_CONST.replace(/^CONFIG/, e.name.text));
+          bindings.push(`${e.name.text === "CONFIG" ? "CONFIG" : `CONFIG as ${e.name.text}`} из «${st.moduleSpecifier.text}»`);
+        }
+  }
+  const obj = new Set<string>(), mins = new Set<string>(), maxs = new Set<string>();
+  const kind = (e0: ts.Node): PriceRef | null => {
+    const e = unwrapExpr(e0);
+    if (ts.isIdentifier(e)) return obj.has(e.text) ? "obj" : mins.has(e.text) ? "min" : maxs.has(e.text) ? "max" : null;
+    const t = normAccess(nodeText(p, e));
+    if (bases.has(t)) return "obj";
+    const m = /^(.*)\.(min|max)$/.exec(t);
+    return m && (bases.has(m[1]) || obj.has(m[1])) ? (m[2] as PriceRef) : null;
+  };
+  for (let changed = true, i = 0; changed && i < 8; i++) {
+    changed = false;
+    walk(p.sf, (n) => {
+      if (!ts.isVariableDeclaration(n) || !n.initializer) return;
+      const k = kind(n.initializer);
+      const add = (set: Set<string>, name: string) => { if (!set.has(name)) { set.add(name); changed = true; } };
+      if (ts.isIdentifier(n.name)) { if (k) add(k === "obj" ? obj : k === "min" ? mins : maxs, n.name.text); }
+      else if (ts.isObjectBindingPattern(n.name) && k === "obj")
+        for (const el of n.name.elements) {
+          if (!ts.isIdentifier(el.name)) continue;
+          const prop = el.propertyName && (ts.isIdentifier(el.propertyName) || ts.isStringLiteral(el.propertyName)) ? el.propertyName.text : el.name.text;
+          if (prop === "min") add(mins, el.name.text);
+          else if (prop === "max") add(maxs, el.name.text);
+        }
+    });
+  }
+  return { kind, bindings };
+}
+/** Числовой литерал (в т. ч. с унарным минусом) → значение */
+const numLit = (e: ts.Node): number | null => {
+  const x = unwrapExpr(e);
+  return ts.isNumericLiteral(x) ? Number(x.text)
+    : ts.isPrefixUnaryExpression(x) && x.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(x.operand) ? -Number(x.operand.text) : null;
+};
+/** `a op b` → `b op' a`: `MIN <= n` ≡ `n >= MIN` */
+const FLIP: Partial<Record<ts.SyntaxKind, ts.SyntaxKind>> = {
+  [ts.SyntaxKind.LessThanToken]: ts.SyntaxKind.GreaterThanToken, [ts.SyntaxKind.GreaterThanToken]: ts.SyntaxKind.LessThanToken,
+  [ts.SyntaxKind.LessThanEqualsToken]: ts.SyntaxKind.GreaterThanEqualsToken, [ts.SyntaxKind.GreaterThanEqualsToken]: ts.SyntaxKind.LessThanEqualsToken,
+};
+/** Сравнение значения с границей, совместимое со схемой (min()/max() zod — включительно): принять `n >= min` / `n <= max`
+ *  или отклонить `n < min` / `n > max`. `n > min`, `n <= min`, `n < max`, `n >= max` и равенства — граница исключительно или точка */
+const BOUND_OPS: Record<"min" | "max", ts.SyntaxKind[]> = {
+  min: [ts.SyntaxKind.GreaterThanEqualsToken, ts.SyntaxKind.LessThanToken],
+  max: [ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanToken],
+};
+/**
+ * Цепочка offer_price_pct — белый список (ревью 20.10, раунд 2, R1r2-1): корень — ровно `z.number()` (z из "zod"), затем
+ * `.min(<P>.min)` / `.gte(<P>.min)` и `.max(<P>.max)` / `.lte(<P>.max)` ровно по разу, а из прочего — только вызовы, не меняющие
+ * множества принимаемых чисел: `.nullable()`, `.optional()`, `.finite()` (при min/max смысла не меняет) и `.describe(<строка>)`.
+ * Любой другой вызов (int, multipleOf, step, refine, superRefine, transform, pipe, catch, default, or, and, brand, positive, gt,
+ * lt, …) делает схему уже или шире константы, а форма AskPrice об этом не знает
+ */
+const ZOD_MIN = ["min", "gte"], ZOD_MAX = ["max", "lte"], ZOD_NOARG = ["nullable", "optional", "finite"];
+
+/** Локальные имена значения z из "zod": `import { z }`, `import { z as X }`, `import * as X`, `import X` (default) */
+function zodLocals(sf: ts.SourceFile): Set<string> {
+  const out = new Set<string>();
+  for (const st of sf.statements) {
+    if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier) || st.moduleSpecifier.text !== "zod") continue;
+    const c = st.importClause;
+    if (!c || c.isTypeOnly) continue;
+    if (c.name) out.add(c.name.text);
+    const nb = c.namedBindings;
+    if (nb && ts.isNamespaceImport(nb)) out.add(nb.name.text);
+    else if (nb && ts.isNamedImports(nb)) for (const e of nb.elements) if (!e.isTypeOnly && (e.propertyName ?? e.name).text === "z") out.add(e.name.text);
+  }
+  return out;
+}
+
+/** contract.ts: offer_price_pct в ReportInputsSchema — ровно `z.number().min(<P>.min).max(<P>.max)` от той же константы, без
+ *  литералов и без других уточнений (белый список выше) */
+function contractPriceProblems(root: string): { problems: string[]; note: string } {
+  const abs = path.join(root, CONTRACT_REL);
+  if (!isFile(abs)) return { problems: [`нет ${CONTRACT_REL}`], note: "" };
+  const p = parseSource(abs);
+  const refs = priceRefs(p, ["./config", "./config.ts", "./config.js", PRICE_CONFIG_SPEC]);
+  const zl = zodLocals(p.sf);
+  const fields: ts.PropertyAssignment[] = [];
+  let declared = false;
+  walk(p.sf, (n) => {
+    if (declared || !ts.isVariableDeclaration(n) || !ts.isIdentifier(n.name) || n.name.text !== "ReportInputsSchema" || !n.initializer) return;
+    declared = true;
+    walk(n.initializer, (m) => { if (ts.isPropertyAssignment(m) && (ts.isIdentifier(m.name) || ts.isStringLiteral(m.name)) && m.name.text === "offer_price_pct") fields.push(m); });
+  });
+  if (!fields.length) return { problems: [`${CONTRACT_REL}: в ReportInputsSchema нет offer_price_pct (свойством «offer_price_pct: z.number()…»)`], note: "" };
+  const f = fields[0];
+  const line = lineAt(p.sf, f.getStart(p.sf));
+  const head = `${CONTRACT_REL}:${line} offer_price_pct`;
+  const want = `нужно z.number().min(${PRICE_CONST}.min).max(${PRICE_CONST}.max), из прочего — только .nullable(), .optional(), .finite(), .describe(«строка»)`;
+  if (fields.length > 1)
+    return { problems: [`${head}: в ReportInputsSchema ${fields.length} свойства offer_price_pct (строки ${fields.map((x) => lineAt(p.sf, x.getStart(p.sf))).join(", ")}) — ${want}`], note: "" };
+  const out: string[] = [];
+  // цепочка снаружи внутрь: X.describe(…) ← X.optional() ← … ← z.number()
+  const calls: { name: string; args: readonly ts.Expression[] }[] = [];
+  let x = unwrapExpr(f.initializer);
+  let rootObj: ts.Node | null = null;
+  if (!ts.isCallExpression(x))
+    out.push(`инициализатор «${cut(oneLine(nodeText(p, x)), 60)}» — не цепочка вызовов (идентификатор или общая переменная прячут уточнения схемы)`);
+  else
+    for (;;) {
+      const call = x as ts.CallExpression;
+      const callee = unwrapExpr(call.expression);
+      if (!ts.isPropertyAccessExpression(callee)) { out.push(`вызов «${cut(oneLine(nodeText(p, call)), 60)}» — не метод цепочки`); break; }
+      calls.unshift({ name: callee.name.text, args: call.arguments });
+      const obj = unwrapExpr(callee.expression);
+      if (!ts.isCallExpression(obj)) { rootObj = obj; break; }
+      x = obj;
+    }
+  const shown = (c: { name: string; args: readonly ts.Expression[] }) => `.${c.name}(${c.args.map((a) => cut(oneLine(nodeText(p, a)), 40)).join(", ")})`;
+  if (calls.length && rootObj) {
+    const r = calls[0];
+    const zOk = ts.isIdentifier(rootObj) && zl.has(rootObj.text);
+    if (!zOk || r.name !== "number" || r.args.length)
+      out.push(`корень цепочки «${cut(oneLine(nodeText(p, rootObj)), 30)}${shown(r)}», а нужен z.number() без аргументов${zOk ? "" : " (z — из \"zod\")"}`);
+    const seen = { min: 0, max: 0 };
+    for (const c of calls.slice(1)) {
+      const b = ZOD_MIN.includes(c.name) ? "min" : ZOD_MAX.includes(c.name) ? "max" : null;
+      if (b) {
+        const a = c.args.length === 1 ? c.args[0] : null;
+        const k = a ? refs.kind(a) : null;
+        if (k === b) seen[b]++;
+        else out.push(`${shown(c)} — ${c.args.length !== 1 ? "нужен ровно один аргумент" : a && numLit(a) != null ? "числовой литерал" : k ? `${PRICE_CONST}.${k}` : "выражение не от константы"} вместо ${PRICE_CONST}.${b}`);
+      } else if (ZOD_NOARG.includes(c.name)) {
+        if (c.args.length) out.push(`${shown(c)} — с аргументами`);
+      } else if (c.name === "describe") {
+        if (!(c.args.length === 1 && (ts.isStringLiteral(c.args[0]) || ts.isNoSubstitutionTemplateLiteral(c.args[0])))) out.push(`${shown(c)} — описание не строковым литералом`);
+      } else out.push(`схема уже или шире константы: ${shown(c)}`);
+    }
+    for (const b of ["min", "max"] as const)
+      if (seen[b] !== 1) out.push(seen[b] ? `.${b}(${PRICE_CONST}.${b}) — ${seen[b]} раза, нужен ровно один` : `нет .${b}(${PRICE_CONST}.${b})`);
+  }
+  if (!refs.bindings.length) out.push(`CONFIG не импортирован из ./config (${PRICE_CONFIG_SPEC})`);
+  return out.length
+    ? { problems: [`${head} не совпадает с ${PRICE_CONST} — ${out.join("; ")} (${want}; И4: схема и AskPrice — из одной константы)`], note: "" }
+    : { problems: [], note: `${head} — z.number()${calls.slice(1).map((c) => c.name === "describe" ? ".describe(…)" : shown(c)).join("")}: границы из ${PRICE_CONST}, других уточнений нет` };
+}
+
 interface Tg7Report { problems: string[]; notes: string[] }
 function analyzeBlocks(root: string): Tg7Report {
   const dir = path.join(root, "packages/blocks/src");
@@ -535,45 +734,106 @@ function analyzeBlocks(root: string): Tg7Report {
     if (outside.length) problems.push(`blocks.tsx: fmt/fmtMax/CONFIG вне InputsPanel и AskPrice — ${list(uniq(outside), 6)} (числа и тон — из VM)`);
     else notes.push(`fmt/fmtMax/CONFIG только в ${[...usedIn].join(", ") || "—"} (InputsPanel, AskPrice и их собственные помощники)`);
 
-    /* (5) AskPrice: цена — через ReportInputsSchema.shape.offer_price_pct.safeParse, без литералов границ 0/1/300 */
+    /* (5) AskPrice: цена — через константу CONFIG.inputs.offerPricePct из @so/engine/config (та же, из которой строится схема),
+     *     границы включительно, без числовых литералов границ; значения схемы (zod) в packages/blocks/src нет */
     const ask = decls.get("AskPrice");
     if (!ask) problems.push("blocks.tsx: нет AskPrice");
     else {
+      const cv = priceConstValues(root);
+      if (!cv.ok) problems.push(cv.detail);
       // AskPrice и его собственные помощники верхнего уровня
       const askOwned = ownedSet(bl.sf, ["AskPrice"]).owned;
       const ownedNodes = [...decls.values()].filter((d) => askOwned.has(d.name));
-      // псевдонимы схемы цены: const X = ReportInputsSchema.shape.offer_price_pct (верхний уровень или внутри AskPrice)
-      const aliases = new Set<string>();
-      walk(bl.sf, (n) => {
-        if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer && normAccess(nodeText(bl, n.initializer)) === PRICE_SCHEMA) aliases.add(n.name.text);
-      });
-      let schemaCall: string | null = null;
-      const bounds: string[] = [];
+      const refs = priceRefs(bl, [PRICE_CONFIG_SPEC]);
+      const at = (n: ts.Node) => `:${lineAt(bl.sf, n.getStart(bl.sf))}`;
+      const isLen = (e: ts.Node) => { const x = unwrapExpr(e); return ts.isPropertyAccessExpression(x) && x.name.text === "length"; };
+      const okCmp: Record<"min" | "max", Map<string, string>> = { min: new Map(), max: new Map() };
+      const badCmp: string[] = [];
+      const lits: string[] = [];
+      const litPos = new Set<number>(); // литералы, уже показанные в сравнении
+      const schemaUse: string[] = [];
+      const boundVals = cv.ok ? [cv.min, cv.max] : [];
       for (const d of ownedNodes) {
         walk(d.node, (n) => {
-          if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "safeParse") {
-            const obj = normAccess(nodeText(bl, n.expression.expression));
-            if (obj === PRICE_SCHEMA || aliases.has(obj)) schemaCall ??= `:${lineAt(bl.sf, n.getStart(bl.sf))} ${cut(oneLine(nodeText(bl, n)), 70)}`;
-          }
+          if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && ["safeParse", "parse", "safeParseAsync", "parseAsync"].includes(n.expression.name.text) &&
+            normAccess(nodeText(bl, n.expression.expression)) !== "JSON")
+            schemaUse.push(`${at(n)} «${cut(oneLine(nodeText(bl, n)), 70)}»`);
+          if (ts.isIdentifier(n) && n.text === "ReportInputsSchema") schemaUse.push(`${at(n)} ReportInputsSchema`);
           if (ts.isBinaryExpression(n) && CMP_OPS.has(n.operatorToken.kind)) {
-            const num = (e: ts.Expression): number | null =>
-              ts.isNumericLiteral(e) ? Number(e.text) : ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(e.operand) ? -Number(e.operand.text) : null;
-            const isLen = (e: ts.Expression) => ts.isPropertyAccessExpression(e) && e.name.text === "length";
-            const [l, r] = [num(n.left), num(n.right)];
-            const lit = l ?? r;
-            const other = l != null ? n.right : n.left;
-            if (lit != null && [0, 1, 300].includes(lit) && !isLen(other)) bounds.push(`:${lineAt(bl.sf, n.getStart(bl.sf))} «${oneLine(nodeText(bl, n))}»`);
+            const shown = `${at(n)} «${oneLine(nodeText(bl, n))}»`;
+            // числовой литерал в сравнении — своя граница (кроме сравнений с .length)
+            const [l, r] = [numLit(n.left), numLit(n.right)];
+            if ((l != null && !isLen(n.right)) || (r != null && !isLen(n.left))) {
+              lits.push(shown);
+              walk(n, (x) => { if (ts.isNumericLiteral(x)) litPos.add(x.getStart(bl.sf)); });
+            }
+            const [kl, kr] = [refs.kind(n.left), refs.kind(n.right)];
+            const b = kr === "min" || kr === "max" ? kr : kl === "min" || kl === "max" ? kl : null;
+            if (b) {
+              const op = b === kr ? n.operatorToken.kind : (FLIP[n.operatorToken.kind] ?? n.operatorToken.kind);
+              const x = squash(nodeText(bl, b === kr ? n.left : n.right));
+              if (BOUND_OPS[b].includes(op)) okCmp[b].set(x, shown);
+              else badCmp.push(`${shown} (${b}: граница ${op === ts.SyntaxKind.EqualsEqualsEqualsToken || op === ts.SyntaxKind.EqualsEqualsToken || op === ts.SyntaxKind.ExclamationEqualsEqualsToken || op === ts.SyntaxKind.ExclamationEqualsToken ? "как точка" : "исключительно"}, а в схеме — включительно)`);
+            }
           }
+          // литерал, равный границе константы, где угодно в AskPrice (Math.min/max, атрибуты min/max поля, свои константы)
+          if (ts.isNumericLiteral(n) && boundVals.includes(Number(n.text)) && !litPos.has(n.getStart(bl.sf)))
+            lits.push(`${at(n)} литерал ${n.text} (= границе ${PRICE_CONST})`);
         });
       }
-      // ReportInputsSchema — из @so/engine/contract (И4: одна схема)
-      const imp = importsOf(bl.sf).find((r) => r.names.some((x) => x.name === "ReportInputsSchema"));
       const askLine = lineAt(bl.sf, ask.node.getStart(bl.sf));
-      if (!schemaCall) problems.push(`AskPrice (blocks.tsx:${askLine}): цена не проверяется через ${PRICE_SCHEMA}.safeParse (И4, §4.2)`);
-      else if (!imp || imp.spec !== "@so/engine/contract") problems.push(`AskPrice: ReportInputsSchema ${imp ? `импортирован из «${imp.spec}»` : "не импортирован"}, а нужен из @so/engine/contract (И4)`);
-      else notes.push(`AskPrice: ${PRICE_SCHEMA}.safeParse ${schemaCall}`);
-      if (bounds.length) problems.push(`AskPrice: границы цены числовыми литералами в сравнениях — ${bounds.join(", ")} (границы — из схемы: min(1), max(300))`);
+      const both = [...okCmp.min.keys()].filter((x) => okCmp.max.has(x));
+      if (!refs.bindings.length) problems.push(`blocks.tsx: CONFIG не импортирован значением из ${PRICE_CONFIG_SPEC} — проверке цены не из чего брать границы (И4, §4.2)`);
+      if (!both.length)
+        problems.push(`AskPrice (blocks.tsx:${askLine}): цена не проверяется через ${PRICE_CONST} из ${PRICE_CONFIG_SPEC} — нужно сравнение одного значения с .min (>=) и .max (<=) константы; ` +
+          `найдено: min ${okCmp.min.size ? [...okCmp.min.values()].join(", ") : "—"}, max ${okCmp.max.size ? [...okCmp.max.values()].join(", ") : "—"} (И4, §4.2)`);
+      if (badCmp.length) problems.push(`AskPrice: ${badCmp.join(", ")}`);
+      if (lits.length) problems.push(`AskPrice: границы цены числовыми литералами — ${uniq(lits).join(", ")} (границы — из ${PRICE_CONST}${cv.ok ? `: min ${cv.min}, max ${cv.max}` : ""})`);
+      if (schemaUse.length) problems.push(`AskPrice: проверка через схему, а не через константу — ${uniq(schemaUse).join(", ")} (значение схемы тянет zod в клиентский бандл)`);
+      if (both.length && !badCmp.length && !lits.length && !schemaUse.length)
+        notes.push(`AskPrice: ${PRICE_CONST} из ${PRICE_CONFIG_SPEC} (${refs.bindings.join(", ")}), ${okCmp.min.get(both[0])} и ${okCmp.max.get(both[0])}${cv.ok ? `, константа min ${cv.min} / max ${cv.max} (${CONFIG_REL}:${cv.line})` : ""}, литералов границ нет`);
+      const cp = contractPriceProblems(root);
+      problems.push(...cp.problems);
+      if (cp.note) notes.push(cp.note);
     }
+  }
+
+  /* (6) packages/blocks/src: из @so/engine/contract — только типы. Значение схемы, которое клиентский код использует, тянет zod и
+   *     contract.ts в клиентские бандлы даже при "sideEffects": false; импорт схемы в @so/present/entry (ради initialOf) клиент не
+   *     использует, и он выпадает только благодаря "sideEffects": false в @so/engine — это держит часть (7) */
+  const blDir = path.join(root, "packages/blocks/src");
+  if (isDir(blDir)) {
+    const vals: string[] = [];
+    let typeImports = 0;
+    for (const f of scriptFiles(blDir)) {
+      const p = f.endsWith("blocks.tsx") && bl ? bl : parseSource(f);
+      for (const r of importsOf(p.sf)) {
+        if (r.spec !== CONTRACT_SPEC) continue;
+        const valueNames = r.names.filter((x) => !x.type).map((x) => x.name);
+        // только типы: `import type …`, `import("…").T` в типе, или все имена с `type`; голый `import "…"` — значение (модуль исполняется)
+        if (r.typeOnly || r.via === "import(тип)" || (r.whole == null && r.names.length > 0 && !valueNames.length)) { typeImports++; continue; }
+        vals.push(`${relOf(root, f)}:${r.line} ${r.via}${valueNames.length ? ` { ${valueNames.join(", ")} }` : r.whole ? ` (${r.whole})` : " (без имён — модуль исполняется)"}`);
+      }
+    }
+    if (vals.length) problems.push(`packages/blocks/src: значения из ${CONTRACT_SPEC} — ${vals.join("; ")} (клиентскому коду — только типы, иначе zod и contract.ts в бандле)`);
+    else notes.push(`из ${CONTRACT_SPEC} в packages/blocks/src только типы (${typeImports} импортов)`);
+  }
+
+  /* (7) "sideEffects": false в packages/engine/package.json (ревью 20.10, F1/R2-1). @so/present/entry импортирует ReportInputsSchema
+   *     значением ради initialOf, а entry импортируют клиентские модули (CheckClient, ChatApp, Thread, ToolUIs, а blocks.tsx — через
+   *     @so/present/report → ./entry). Сборщик выбрасывает неиспользуемый импорт схемы, только если модули @so/engine помечены
+   *     без побочных эффектов; без флага zod и contract.ts возвращаются в клиент (+59,8 КБ на /, /check, /chat; static client.js
+   *     236 317 → 301 733 Б) */
+  {
+    const rel = "packages/engine/package.json";
+    const abs = path.join(root, rel);
+    let se: unknown = undefined, err: string | null = null;
+    try { se = (JSON.parse(fs.readFileSync(abs, "utf8")) as { sideEffects?: unknown }).sideEffects; }
+    catch (e) { err = e instanceof Error ? e.message : String(e); }
+    if (err) problems.push(`${rel} не прочитан: ${err}`);
+    else if (se !== false)
+      problems.push(`${rel}: "sideEffects" ${se === undefined ? "нет" : `= ${JSON.stringify(se)}`}, нужен false — без флага @so/present/entry (initialOf) тянет zod и contract.ts в клиентский бандл`);
+    else notes.push(`${rel}: "sideEffects": false (иначе @so/present/entry тянет zod и contract.ts в клиент)`);
   }
 
   /* (4) branches.tsx: нет функций склонения (% 10 / % 100, plural) */
@@ -599,7 +859,9 @@ function runTG7(root: string): Verdict {
   const r = analyzeBlocks(root);
   const want = "ожид.: в packages/blocks/src/{blocks,branches,ReportView,ui}.tsx нет кириллицы в литералах и JSX-тексте (тексты — из VM и WEB), " +
     "в ui.tsx нет pct2/pctMax/cap1/scoreTone/liquidityTone, fmt/fmtMax/CONFIG только в InputsPanel и AskPrice, в branches.tsx нет склонения, " +
-    `AskPrice проверяет цену через ${PRICE_SCHEMA}.safeParse без литералов 0/1/300`;
+    `AskPrice проверяет цену через ${PRICE_CONST} из ${PRICE_CONFIG_SPEC} (n >= min, n <= max — включительно, как схема), без числовых литералов границ; ` +
+    `offer_price_pct в contract.ts — ровно z.number().min(${PRICE_CONST}.min).max(${PRICE_CONST}.max) (из прочего — только .nullable/.optional/.finite/.describe); из ${CONTRACT_SPEC} в packages/blocks/src только типы; ` +
+    `в packages/engine/package.json "sideEffects": false`;
   return r.problems.length ? fail(`${r.problems.join(" | ")} | ${want}`) : pass(r.notes.join("; "));
 }
 
@@ -895,7 +1157,7 @@ export function makeStaticChecks(root: string = REPO_ROOT): Check[] {
     },
     {
       id: "TG.7", wp: "TG", kind: "static",
-      title: "И3: React-блоки без своих текстов и форматирования чисел; AskPrice проверяет цену схемой",
+      title: "И3: React-блоки без своих текстов и форматирования чисел; AskPrice проверяет цену константой пределов из @so/engine/config (той же, что схема: offer_price_pct — ровно z.number().min/.max от неё); \"sideEffects\": false в @so/engine (zod и contract.ts не в клиенте)",
       run: () => runTG7(root),
     },
     {

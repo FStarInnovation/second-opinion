@@ -22,7 +22,7 @@ import { brief } from "./normalize";
 import { blank, blankTraps, commands, ShParseError, shFunctions, tokenize, wordLit, wordText, type Piece, type Word } from "./sh";
 import { scenario, scenarioNotes, TG_TEST, type ScenarioResult } from "./scenarios";
 import {
-  G6_REPORTS, HEALTH_VERSION_A, HEALTH_VERSION_B, TG13_ROWS, TG14_PERM, TG14_WITH, TG14_WITHOUT, payloadOf,
+  G6_REPORTS, HEALTH_VERSION_A, HEALTH_VERSION_B, PRICE_EPS, TG13_ROWS, TG14_PERM, TG14_WITH, TG14_WITHOUT, payloadOf,
   type G6Out, type HealthOut, type LimitsOut, type ParityOut, type Row13, type Tg11Out, type Tg13Out, type Tg14Out, type Verdict13,
 } from "./scen-server";
 import { loadBot, loadPresent } from "./types";
@@ -231,7 +231,7 @@ function checkPageStatic(): { ok: boolean; detail: string } {
 
 const TG13: Check = {
   id: "TG.13", wp: "TG", kind: "fixture",
-  title: "И4: @so/engine/contract экспортирует ReportInputsSchema, tools.inputsSchema — тот же объект; NaN, pos 999, k 3,5, promised 101, price 0 / 0,5 / 301 одинаково отклоняются, а валидные (с границами) принимаются в /api/report GET и POST, body.inputs /api/chat, /check, initialOf, decodeStartPayload; в check/page.tsx нет своего num() без схемы",
+  title: "И4: @so/engine/contract экспортирует ReportInputsSchema, tools.inputsSchema — тот же объект; NaN, pos 999, k 3,5, promised 101, price 0 / 0,5 / 301 одинаково отклоняются, а валидные (с границами) принимаются в /api/report GET и POST, body.inputs /api/chat, /check, initialOf, decodeStartPayload; в check/page.tsx нет своего num() без схемы; схема и форма AskPrice на границах константы CONFIG.inputs.offerPricePct (min−ε/min/max/max+ε) отклоняют и принимают одинаково, дробная точка уходит в onSubmit без изменений; AskPrice следует за константой при её временной подмене (сужение {2, 250} и расширение {0.5, 400}); плотная сверка схемы с константой (~210 точек до 0,001, seed): offer_price_pct принимает ⇔ min ≤ v ≤ max",
   run(): Verdict {
     const s = run<Tg13Out>("server:tg13");
     if (!s.ok) return s.v;
@@ -262,7 +262,46 @@ const TG13: Check = {
       }).join("; "));
     }
     if (!o.entry.ok) { ok = false; parts.push(`initialOf и decodeStartPayload: ${o.entry.detail}`); }
-    // 3. статика check/page.tsx
+    // 3. пределы цены (решение владельца 20.10.2026): схема согласована с константой CONFIG.inputs.offerPricePct, форма AskPrice — со схемой
+    const pr = o.price;
+    if (!pr.constant.ok) { ok = false; parts.push(`пределы цены: ${pr.constant.detail}`); }
+    if (!pr.ask.ok) { ok = false; parts.push(`форма AskPrice: ${pr.ask.detail}`); }
+    if (pr.constant.ok) {
+      const yn = (b: boolean | null) => (b === true ? "принимает" : b === false ? "отклоняет" : "—");
+      const issues: string[] = [];
+      for (const e of pr.edges) {
+        if (e.want !== null && e.schema !== e.want) issues.push(`${e.label}: схема ${yn(e.schema)}, а по константе должна ${e.want ? "принимать" : "отклонять"} — схема и константа разошлись`);
+        if (pr.ask.ok && e.want !== null && e.schema !== null && e.ask !== e.schema) issues.push(`${e.label}: AskPrice ${yn(e.ask)}, схема ${yn(e.schema)} (${e.note})`);
+        if (pr.ask.ok && e.want === null && e.ask !== false) issues.push(`${e.label}: AskPrice ${yn(e.ask)}, должна отклонять (${e.note})`);
+      }
+      // плотная сверка одной схемы с константой (ревью 20.10, раунд 2, R1r2-1): уточнение схемы внутри [min, max] (multipleOf,
+      // step, int, refine, …) форма AskPrice не повторяет — принять ⇔ min ≤ v ≤ max на точках до 0,001
+      const d = pr.dense;
+      if (!d) issues.push("плотная сверка схемы с константой не выполнена — схема не загружена");
+      else if (d.miss.length) {
+        const N = 8;
+        const how = (m: (typeof d.miss)[number]) => `${m.v} → схема ${yn(m.field)}${m.obj !== m.field ? ` (поле), ReportInputsSchema ${yn(m.obj)}` : ""} (по константе — ${m.want ? "принять" : "отклонить"})`;
+        issues.push(`схема и константа разошлись: ${d.miss.slice(0, N).map(how).join(", ")}${d.miss.length > N ? `, … ещё ${d.miss.length - N}` : ""} — ` +
+          `${d.miss.length} из ${d.n} точек плотной сверки (seed ${d.seed}, до 0,001; ожидание — принять ⇔ min ≤ v ≤ max)`);
+      }
+      // AskPrice следует за константой при её подмене (ревью 20.10, F2): свои границы мимо константы не идут за ней
+      if (pr.ask.ok && !pr.follow.length) issues.push("AskPrice при подменённой константе не проверялась");
+      for (const f of pr.follow)
+        if (f.ask !== f.want)
+          issues.push(`AskPrice не следует за CONFIG.inputs.offerPricePct: при { min: ${f.lim.min}, max: ${f.lim.max} } ${f.v} ${yn(f.ask)}, а должна ${f.want ? "принимать" : "отклонять"} (${f.note})`);
+      if (issues.length) { ok = false; parts.push(`пределы цены (${pr.constant.detail}): ${issues.join("; ")}`); }
+      else {
+        const both = (x: boolean | null) => (x === true ? "принимают" : x === false ? "отклоняют" : "—");
+        parts.push(`пределы цены (${pr.constant.detail}, ε ${PRICE_EPS}): ` +
+          pr.edges.map((e) => `${e.label}, ${e.field} — ${e.want === null ? `AskPrice ${yn(e.ask)}` : `схема и AskPrice ${both(e.schema)}`}`).join(", "));
+        const sets = [...new Map(pr.follow.map((f) => [`${f.lim.min}/${f.lim.max}`, f.lim])).values()];
+        if (d) parts.push(`плотная сверка схемы с константой: ${d.n} точек (${d.fixed} фиксированных до 0,001 и ±Infinity, остальные — seed ${d.seed}, 1–3 знака; ` +
+          `${d.inside} внутри [min, max], ${d.outside} снаружи) — offer_price_pct и ReportInputsSchema принимают ⇔ min ≤ v ≤ max`);
+        parts.push(`AskPrice следует за подменённой константой: ` + sets.map((l) => `{ min: ${l.min}, max: ${l.max} } — ` +
+          pr.follow.filter((f) => f.lim.min === l.min && f.lim.max === l.max).map((f) => `${f.v} ${f.want ? "принята" : "отклонена"}`).join(", ")).join("; "));
+      }
+    }
+    // 4. статика check/page.tsx
     const st = checkPageStatic();
     if (!st.ok) ok = false;
     parts.push(st.detail);

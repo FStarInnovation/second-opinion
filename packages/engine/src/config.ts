@@ -35,6 +35,13 @@ export const CONFIG = {
   fxShock: 0.1,
   controlWarnPp: 0.5,
   controlFailPp: 5,
+  /**
+   * Пределы ввода пользователя (И4 плана WP-TG), границы включительно. Из offerPricePct строится ReportInputsSchema.offer_price_pct
+   * (contract.ts) и проверка формы AskPrice (@so/blocks): клиент берёт отсюда числа, а не схему, и zod в клиентский бандл не попадает.
+   */
+  inputs: {
+    offerPricePct: { min: 1, max: 300 }, // цена предложения, % от номинала
+  },
 };
 
 export const gradeOf = (score: number): string =>
