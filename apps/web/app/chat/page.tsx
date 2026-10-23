@@ -5,7 +5,7 @@ import { ChatApp, type ChatInitial } from "@/components/ChatApp";
 import { isMock } from "@/lib/model";
 import { inputsSchema } from "@/lib/tools";
 
-export const metadata: Metadata = { title: "Ассистент · Second opinion" };
+export const metadata: Metadata = { title: "Ассистент · Second opinion", alternates: { canonical: "/chat" } };
 
 export const dynamic = "force-dynamic"; // фичефлаг и режим MOCK читаются из окружения при каждом запросе
 

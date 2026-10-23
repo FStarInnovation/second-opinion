@@ -19,7 +19,8 @@ export function SiteHeader({ homeHref, cabinetHref }: { homeHref?: string; cabin
           <span className="so-brand__name">Атремус</span>
           <span className="so-brand__sub">Second opinion</span>
         </a>
-        <a className="btn btn-outline" href={cabinetHref ?? CABINET_HREF} target="_blank" rel="noopener">Войти в кабинет</a>
+        {/* data-goal — цель Метрики на сайте (apps/web/app/metrika.tsx); без счётчика атрибут ничего не делает */}
+        <a className="btn btn-outline" href={cabinetHref ?? CABINET_HREF} target="_blank" rel="noopener" data-goal="login_click">Войти в кабинет</a>
       </div>
     </header>
   );

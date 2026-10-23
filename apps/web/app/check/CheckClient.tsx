@@ -22,7 +22,7 @@ function chatHref(res: BuildResultT, query: string): string | null {
 function ChatLink({ href }: { href: string }) {
   return (
     <div data-block="chat_link" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
-      <a className="btn btn-outline" href={href}>Обсудить с ассистентом</a>
+      <a className="btn btn-outline" href={href} data-goal="chat_open">Обсудить с ассистентом</a>
       <p className="cap">Те же блоки — в диалоге: спросить про риски и термины, пересчитать под другую сумму</p>
     </div>
   );

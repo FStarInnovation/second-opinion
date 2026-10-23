@@ -1,6 +1,7 @@
 "use client";
 /**
  * Тред чата на примитивах assistant-ui (без shadcn/Tailwind — стиль продукта из @so/blocks).
+ * ym-hide-content (поле ввода и реплики пользователя) — Вебвизор Метрики не записывает то, что пишет пользователь.
  */
 import type { FC } from "react";
 import { ThreadPrimitive, MessagePrimitive, ComposerPrimitive } from "@assistant-ui/react";
@@ -18,7 +19,7 @@ const TextPart: FC<{ text: string }> = ({ text }) => <p className="so-msg__text"
 
 const UserMessage: FC = () => (
   <MessagePrimitive.Root className="so-msg so-msg--user" data-role="user">
-    <div className="so-msg__bubble"><Text /></div>
+    <div className="so-msg__bubble ym-hide-content"><Text /></div>
   </MessagePrimitive.Root>
 );
 
@@ -60,7 +61,7 @@ export const Thread: FC<{ mock?: boolean }> = ({ mock }) => (
       <ThreadPrimitive.ViewportFooter className="so-thread__footer">
         <ComposerPrimitive.Root className="so-composer">
           <ComposerPrimitive.Input
-            className="so-composer__input"
+            className="so-composer__input ym-hide-content ym-disable-keys"
             placeholder="Например: проверь RU000A10ASE2, обещали 26%"
             rows={1}
             autoFocus

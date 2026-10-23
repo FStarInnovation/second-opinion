@@ -19,7 +19,8 @@ const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Search> }): Promise<Metadata> {
   const sp = await searchParams;
-  return { title: `${str(sp.q) || "Проверка"} · Second opinion` };
+  // canonical без параметров: отчёт по ?q=… — инструмент, а не отдельная страница для поиска
+  return { title: `${str(sp.q) || "Проверка"} · Second opinion`, alternates: { canonical: "/check" } };
 }
 
 export default async function CheckPage({ searchParams }: { searchParams: Promise<Search> }) {

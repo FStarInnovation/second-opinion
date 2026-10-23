@@ -120,7 +120,8 @@ export function AskPrice({ r, onSubmit, unavailableNote }: {
       <div className="inputs__field" style={{ flex: "0 1 auto" }}>
         <label htmlFor="ask-price" className="lbl">По какой цене вам предлагают купить? % от номинала</label>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input id="ask-price" className="inp" inputMode="decimal" autoComplete="off" placeholder="например, 98,5"
+          {/* ym-hide-content ym-disable-keys — Вебвизор Метрики не записывает ввод (так у всех полей отчёта) */}
+          <input id="ask-price" className="inp ym-hide-content ym-disable-keys" inputMode="decimal" autoComplete="off" placeholder="например, 98,5"
             value={v} onChange={(e) => setV(e.target.value)} style={{ flex: "1 1 160px" }} />
           <button type="submit" className="btn btn-primary btn-lg" style={{ flex: "0 0 auto" }}>Посчитать</button>
         </div>
@@ -274,7 +275,7 @@ export function InputsPanel({ r, onInputs }: { r: R; onInputs?: (i: ReportInputs
       </div>
       <div className="inputs__field">
         <label htmlFor="in-pos" className="cap">Своя сумма</label>
-        <input id="in-pos" className="inp" inputMode="numeric" autoComplete="off" value={posS} disabled={disabled}
+        <input id="in-pos" className="inp ym-hide-content ym-disable-keys" inputMode="numeric" autoComplete="off" value={posS} disabled={disabled}
           onChange={(e) => {
             setPosS(e.target.value);
             const n = parseNum(e.target.value);
@@ -284,7 +285,7 @@ export function InputsPanel({ r, onInputs }: { r: R; onInputs?: (i: ReportInputs
       {r.panels.includes("fees") ? (
         <div className="inputs__field">
           <label htmlFor="in-k" className="cap">Комиссия брокера, % от суммы сделки</label>
-          <input id="in-k" className="inp" inputMode="decimal" autoComplete="off" placeholder="например, 0,3" value={kS} disabled={disabled}
+          <input id="in-k" className="inp ym-hide-content ym-disable-keys" inputMode="decimal" autoComplete="off" placeholder="например, 0,3" value={kS} disabled={disabled}
             onChange={(e) => {
               setKS(e.target.value);
               const n = parseNum(e.target.value);
@@ -297,7 +298,7 @@ export function InputsPanel({ r, onInputs }: { r: R; onInputs?: (i: ReportInputs
         // «обещали» сравнивается с расчётной доходностью — без неё поле бессмысленно (нет цены / ставки)
         <div className="inputs__field">
           <label htmlFor="in-pr" className="cap">Сколько обещали, % годовых</label>
-          <input id="in-pr" className="inp" inputMode="decimal" autoComplete="off" placeholder="например, 18" value={prS} disabled={disabled}
+          <input id="in-pr" className="inp ym-hide-content ym-disable-keys" inputMode="decimal" autoComplete="off" placeholder="например, 18" value={prS} disabled={disabled}
             onChange={(e) => {
               setPrS(e.target.value);
               const n = parseNum(e.target.value);
