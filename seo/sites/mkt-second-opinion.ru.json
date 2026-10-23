@@ -1,0 +1,27 @@
+{
+ "name": "mkt-second-opinion.ru",
+ "repo": "FStarInnovation/second-opinion",
+ "repo_path": "apps/web",
+ "base_url": "https://mkt-second-opinion.ru",
+ "canonical_host": "mkt-second-opinion.ru",
+ "lang": "ru",
+ "indexable": false,
+ "pages": [
+  "/"
+ ],
+ "forbidden_hosts": [
+  "40-160-87-140.sslip.io"
+ ],
+ "allowed_hosts": [],
+ "metrika_id": null,
+ "min_text_chars": 1500,
+ "require": {
+  "llms_txt": true,
+  "jsonld_types": [
+   "WebSite",
+   "WebApplication"
+  ]
+ },
+ "source": "github.com/FStarInnovation/second-opinion (Next.js, apps/web; хостинг heidi). indexable=false, пока стенд закрыт (SO_PUBLIC!=1); при запуске поставить true.",
+ "app_pages_note": "/check и /chat — страницы приложения, текст рисуется в браузере; SEO-проверки страниц — только по главной"
+}

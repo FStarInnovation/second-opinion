@@ -1,0 +1,69 @@
+# Проверка PR в second-opinion: харнес WP-SEO приложения, тесты внешнего харнеса,
+# сборка и внешний SEO-харнес по локальному серверу. Ничего не выкатывает.
+name: seo-harness
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/blocks/**"
+      - "seo/**"
+      - ".github/workflows/seo-*.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seo-harness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Зависимости
+        run: npm ci --no-audit --no-fund
+
+      - name: Типы
+        run: npm run -w @so/web typecheck
+
+      - name: Харнес приложения WP-SEO (против базы)
+        run: npm run -w @so/web audit -- --only SEO --baseline
+
+      - name: Тесты внешнего харнеса
+        working-directory: seo/harness
+        run: python3 -m unittest -v test_seo_harness
+
+      - name: Сборка
+        # повтор: next build иногда останавливается с подсказкой об обновлении и проходит со второго раза
+        run: npm run -w @so/web build || npm run -w @so/web build
+
+      - name: Внешний SEO-харнес по локальному серверу
+        run: |
+          (cd apps/web && npx next start -H 127.0.0.1 -p 3999 > /tmp/next.log 2>&1 &)
+          for i in $(seq 1 60); do curl -fsS -o /dev/null http://127.0.0.1:3999/ && break; sleep 1; done
+          python3 - <<'PY'
+          import json
+          c = json.load(open("seo/sites/mkt-second-opinion.ru.json", encoding="utf-8"))
+          c["base_url"] = "http://127.0.0.1:3999"
+          json.dump(c, open("/tmp/so-local.json", "w", encoding="utf-8"), ensure_ascii=False)
+          PY
+          # Справочно: og:image и адреса sitemap указывают на прод, поэтому P.8 и S.6 зависят от выкладки.
+          python3 seo/harness/seo_harness.py /tmp/so-local.json --live --md "$GITHUB_STEP_SUMMARY" || true
+          python3 seo/harness/seo_harness.py /tmp/so-local.json --live | tail -30 || true
