@@ -241,7 +241,7 @@ function pngSize(file: string): { w: number; h: number } | null {
 
 const SEO6: Check = {
   id: "SEO.6", wp: "SEO", kind: "static",
-  title: "Картинки по соглашению файлов Next: app/opengraph-image.png 1200×630, app/icon.svg, app/apple-icon.png 180×180",
+  title: "Картинки по соглашению файлов Next: app/opengraph-image.png 1200×630, app/icon.svg, app/apple-icon.png 180×180, app/favicon.ico",
   run(): Verdict {
     const rows: string[] = [];
     let ok = true;
@@ -257,6 +257,12 @@ const SEO6: Check = {
     const svgOk = /<svg\b[^>]*\bviewBox="[^"]+"/.test(svgSrc);
     ok &&= svgOk;
     rows.push(`icon.svg: ${svgSrc ? (svgOk ? "<svg viewBox>" : "без <svg viewBox> ✗") : "нет ✗"}`);
+    // /favicon.ico запрашивают браузеры и роботы напрямую, без <link rel=icon>: без файла — 404 в журнале
+    const ico = appFile("favicon.ico");
+    const icoHead = fs.existsSync(ico) ? fs.readFileSync(ico).subarray(0, 4) : null;
+    const icoOk = icoHead != null && icoHead[0] === 0 && icoHead[1] === 0 && icoHead[2] === 1 && icoHead[3] === 0;
+    ok &&= icoOk;
+    rows.push(`favicon.ico: ${icoHead ? (icoOk ? "ICO" : "не ICO ✗") : "нет ✗"}`);
     const alt = appFile("opengraph-image.alt.txt");
     rows.push(`справочно, opengraph-image.alt.txt: ${fs.existsSync(alt) ? `«${cut(oneLine(fs.readFileSync(alt, "utf8")), 70)}»` : "нет"}`);
     const detail = `${rows.join("; ")} | заглушки до макета дизайнера; ожид.: файлы есть, размеры как в соглашении`;
