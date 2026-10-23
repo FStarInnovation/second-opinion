@@ -1,0 +1,35 @@
+# Разовая проверка: отвечают ли API Яндекса и Google с серверов GitHub.
+# Без токенов и данных — только код ответа и время. После проверки ветку можно удалить.
+name: yandex-api-check
+
+on:
+  push:
+    branches: [ci/yandex-api-check]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe endpoints
+        run: |
+          probe() {
+            local name="$1" url="$2" flag="${3:-}"
+            local out
+            out=$(curl $flag -s -o /dev/null -w "%{http_code} %{time_connect}s %{time_total}s" --max-time 20 "$url" || true)
+            echo "$name $flag -> $out"
+            echo "::notice title=$name${flag:+ $flag}::$out"
+            echo "| $name ${flag} | $out |" >> "$GITHUB_STEP_SUMMARY"
+          }
+          echo "| endpoint | code connect total |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          probe webmaster      https://api.webmaster.yandex.net/v4/user
+          probe webmaster      https://api.webmaster.yandex.net/v4/user -4
+          probe metrika        https://api-metrika.yandex.net/management/v1/counters
+          probe yandex-search  https://searchapi.api.cloud.yandex.net/
+          probe indexnow       https://yandex.com/indexnow
+          probe search-console https://searchconsole.googleapis.com/webmasters/v3/sites
