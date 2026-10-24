@@ -4,6 +4,8 @@
 Окружение: YM_TOKEN (OAuth-токен с правом metrika:read), YM_COUNTER (номер счётчика).
 Нет переменных — выходит с кодом 0 и пишет «пропуск» (цикл работает и без Метрики).
 Результат: seo/data/metrika-<YYYY-MM-DD>.json (или --out).
+Адреса входа (startURL) сохраняются без параметров: их задаёт посетитель, в цикл они не должны попадать.
+Цифры печатаются в лог, только если REPO_PRIVATE не равно false (в публичном репозитории логи Actions видны всем).
 Только стандартная библиотека.
 """
 from __future__ import annotations
@@ -48,6 +50,22 @@ def report(counter: str, token: str, d1: str, d2: str, dimensions: str | None, l
     return rows
 
 
+def strip_query(rows: list[dict]) -> list[dict]:
+    """startURL без параметров и якоря; одинаковые адреса складываются (визиты, посетители, просмотры)."""
+    out: dict[str, dict] = {}
+    for r in rows:
+        url = (r["dims"][0] or "").split("#")[0].split("?")[0] if r.get("dims") else ""
+        if url not in out:
+            out[url] = {**r, "dims": [url]}
+            continue
+        acc = out[url]
+        acc["bounceRate"] = acc["avgVisitDurationSeconds"] = None  # доли и средние при сложении не пересчитать
+        for k in ("visits", "users", "pageviews"):
+            if isinstance(r.get(k), (int, float)):
+                acc[k] = (acc.get(k) or 0) + r[k]
+    return list(out.values())
+
+
 def goals(counter: str, token: str, d1: str, d2: str) -> list[dict]:
     gl = get(f"/management/v1/counter/{counter}/goals", {}, token).get("goals", [])
     out = []
@@ -73,7 +91,7 @@ def main(argv=None) -> int:
     for key, (d1, d2) in (("current", cur), ("previous", prev)):
         res[key]["totals"] = report(counter, token, d1, d2, None)[0]
         res[key]["by_source"] = report(counter, token, d1, d2, "ym:s:lastTrafficSource", 20)
-        res[key]["by_start_url"] = report(counter, token, d1, d2, "ym:s:startURL", 50)
+        res[key]["by_start_url"] = strip_query(report(counter, token, d1, d2, "ym:s:startURL", 50))
         res[key]["by_search_engine"] = report(counter, token, d1, d2, "ym:s:lastSearchEngine", 20)
         try:
             res[key]["goals"] = goals(counter, token, d1, d2)
@@ -84,7 +102,10 @@ def main(argv=None) -> int:
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(res, fh, ensure_ascii=False, indent=1)
     t = res["current"]["totals"]
-    print(f"Метрика: {out} — визиты {t.get('visits')} за {cur[0]}…{cur[1]}")
+    if os.environ.get("REPO_PRIVATE", "true") == "false":
+        print(f"Метрика: {out} — собрано за {cur[0]}…{cur[1]}")
+    else:
+        print(f"Метрика: {out} — визиты {t.get('visits')} за {cur[0]}…{cur[1]}")
     return 0
 
 

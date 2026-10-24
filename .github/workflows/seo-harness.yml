@@ -7,6 +7,8 @@ on:
     paths:
       - "apps/web/**"
       - "packages/blocks/**"
+      - "packages/engine/**"
+      - "package-lock.json"
       - "seo/**"
       - ".github/workflows/seo-*.yml"
   workflow_dispatch:

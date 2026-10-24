@@ -61,7 +61,10 @@ def main(argv=None) -> int:
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(res, fh, ensure_ascii=False, indent=1)
     clicks = sum(r["clicks"] for r in res["current"]["by_page"])
-    print(f"Search Console: {out} — кликов {clicks} за {cur[0]}…{cur[1]}")
+    if os.environ.get("REPO_PRIVATE", "true") == "false":  # публичный репозиторий: логи Actions видны всем
+        print(f"Search Console: {out} — собрано за {cur[0]}…{cur[1]}")
+    else:
+        print(f"Search Console: {out} — кликов {clicks} за {cur[0]}…{cur[1]}")
     return 0
 
 
