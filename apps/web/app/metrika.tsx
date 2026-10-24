@@ -4,8 +4,9 @@
  * (номер счётчика; NEXT_PUBLIC_* подставляется при next build — задать в apps/web/.env до сборки). Номер в репозиторий не пишем.
  *
  * Просмотры: счётчик с defer:true (без автоматического хита), хит — на первый показ и на каждую навигацию app router
- * (usePathname/useSearchParams; useSearchParams — внутри Suspense). Из адреса хита убираем m — свободный текст вопроса
- * с главной (/chat?m=…), он не должен уходить в Метрику.
+ * (usePathname/useSearchParams; useSearchParams — внутри Suspense). В хит уходит только путь, без параметров: в адресе
+ * бывают текст вопроса (m), бумага (q), «обещали» и сумма позиции (promised, pos, k, price). Реферер со своего сайта —
+ * тоже без параметров; заголовок /check и /chat — постоянный (в title /check стоит q). /chat сам убирает m из адреса.
  * Вебвизор: поля ввода помечены ym-hide-content ym-disable-keys (главная, чат, поля отчёта) — то, что вводит пользователь,
  * не записывается.
  * Цели: элементы с data-goal (форма — по submit, ссылка или кнопка — по click), один слушатель на документ:
@@ -51,6 +52,29 @@ function init(id: number): void {
   counter = id;
 }
 
+/** Адрес хита: только путь, без параметров (hitUrl("https://x.ru", "/check") → "https://x.ru/check") */
+export function hitUrl(origin: string, pathname: string): string {
+  return `${origin}${pathname}`;
+}
+
+/** Реферер: свой сайт — без параметров и якоря; чужой (поисковик, мессенджер) — как есть */
+export function cleanReferrer(ref: string, origin: string): string {
+  if (!ref) return "";
+  try {
+    const u = new URL(ref);
+    return u.origin === origin ? `${u.origin}${u.pathname}` : ref;
+  } catch {
+    return "";
+  }
+}
+
+/** Заголовок хита: у /check и /chat — постоянный (в title /check попадает q), у остальных — заголовок страницы */
+export function hitTitle(pathname: string, docTitle: string): string {
+  if (pathname.startsWith("/check")) return "Проверка · Second opinion";
+  if (pathname.startsWith("/chat")) return "Ассистент · Second opinion";
+  return docTitle;
+}
+
 /** Цели по data-goal: форма — по submit, остальное — по click (клик внутри формы не считается) */
 function listenGoals(): () => void {
   const goalEl = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLElement>("[data-goal]") : null);
@@ -80,11 +104,10 @@ function Tracker({ id }: { id: number }) {
     return listenGoals();
   }, [id]);
   useEffect(() => {
-    const sp = new URLSearchParams(search.toString());
-    sp.delete("m");
-    const qs = sp.toString();
-    const url = `${window.location.origin}${pathname}${qs ? `?${qs}` : ""}`;
-    window.ym?.(id, "hit", url, { referer: prev.current ?? document.referrer });
+    const origin = window.location.origin;
+    const url = hitUrl(origin, pathname);
+    const referer = prev.current ?? cleanReferrer(document.referrer, origin);
+    window.ym?.(id, "hit", url, { referer, title: hitTitle(pathname, document.title) });
     prev.current = url;
   }, [id, pathname, search]);
   return null;

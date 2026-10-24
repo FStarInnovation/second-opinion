@@ -33,7 +33,19 @@ function AutoSend({ text }: { text: string }) {
   return null;
 }
 
+/** Вопрос с главной уже передан в чат (initial.text) — убираем m из адресной строки: текст пользователя не остаётся
+ *  в истории браузера, в закладках и в адресе, который видят счётчики. Остальные параметры не трогаем. */
+function useDropM(): void {
+  useEffect(() => {
+    const u = new URL(window.location.href);
+    if (!u.searchParams.has("m")) return;
+    u.searchParams.delete("m");
+    window.history.replaceState(window.history.state, "", `${u.pathname}${u.search}${u.hash}`);
+  }, []);
+}
+
 export function ChatApp({ mock, initial }: { mock?: boolean; initial?: ChatInitial }) {
+  useDropM();
   // id сессии — для серверного состояния (последний отчёт) и лимита сообщений
   const chatId = useMemo(() => "c_" + Math.random().toString(36).slice(2, 12), []);
   // Вводы /check — полем inputs тела каждого запроса: сервер принимает их, пока в сессии нет отчёта, и применяет один раз.

@@ -15,8 +15,8 @@ export function homeJsonLd(faq: FaqItem[]) {
       { "@type": "WebSite", "@id": `${home}#website`, url: home, name: SITE_NAME, description: SITE_DESCRIPTION, inLanguage: "ru" },
       {
         "@type": "WebApplication", "@id": `${home}#app`, url: home, name: SITE_NAME, description: SITE_DESCRIPTION,
-        applicationCategory: "FinanceApplication", inLanguage: "ru", isAccessibleForFree: true,
-        offers: { "@type": "Offer", price: "0", priceCurrency: "RUB" },
+        // Цену и «бесплатно» не размечаем: на странице этого нет — разметка повторяет только видимый текст
+        applicationCategory: "FinanceApplication", inLanguage: "ru",
       },
       {
         "@type": "FAQPage", "@id": `${home}#faq`, url: home, inLanguage: "ru",

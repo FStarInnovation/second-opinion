@@ -8,14 +8,14 @@
  *  SEO.4  unit    layout.tsx: metadataBase = SITE, Open Graph (website, ru_RU, siteName, title, description), twitter summary_large_image.
  *  SEO.5  unit    свой canonical у каждой страницы: «/» (и og:url «/»), «/check» (generateMetadata), «/chat».
  *  SEO.6  static  картинки по соглашению файлов Next: app/opengraph-image.png 1200×630, app/icon.svg, app/apple-icon.png 180×180.
- *  SEO.7  unit    JSON-LD только на «/»: WebSite + WebApplication (FinanceApplication, ru, бесплатно, 0 RUB) + FAQPage, и FAQPage —
+ *  SEO.7  unit    JSON-LD только на «/»: WebSite + WebApplication (FinanceApplication, ru, без цены) + FAQPage, и FAQPage —
  *                 из того же FAQ, что отрисован: вопросы ≡ <summary>, ответы ≡ текст .faq__a (рендер Home() через react-dom/server,
  *                 с чатом и без — SO_CHAT=0 убирает пункт и со страницы, и из JSON-LD); адреса — основной домен.
  *  SEO.8  unit    GET /llms.txt (route.ts как функция): 200 text/plain; utf-8, ссылки только на основной домен, есть «/», /check,
  *                 /chat (без чата — нет), все вопросы FAQ и пункты «Что покажем» — из тех же текстов, что на странице.
  *  SEO.9  unit    Метрика выключена по умолчанию: layout без NEXT_PUBLIC_YM_ID не рендерит <Metrika>, с номером — рендерит;
  *                 metrika.tsx — клиентский, init с clickmap/trackLinks/accurateTrackBounce/webvisor и defer, хит на навигацию
- *                 (usePathname/useSearchParams в Suspense, без m), reachGoal без счётчика — ничего не делает.
+ *                 (usePathname/useSearchParams в Suspense, адрес и свой реферер без параметров, постоянный title у /check и /chat), reachGoal без счётчика — ничего не делает.
  *  SEO.10 static  Вебвизор не записывает ввод: ym-hide-content ym-disable-keys у полей главной (q, promised, m), поля чата
  *                 (ComposerPrimitive.Input) и полей отчёта (@so/blocks: ask-price, in-pos, in-k, in-pr); цели data-goal:
  *                 check_submit (форма /check), chat_open (форма /chat, примеры вопросов, «Обсудить с ассистентом»), login_click
@@ -292,7 +292,7 @@ function parseHome(html: string) {
 
 const SEO7: Check = {
   id: "SEO.7", wp: "SEO", kind: "unit",
-  title: "JSON-LD только на «/»: WebSite + WebApplication (FinanceApplication, ru, бесплатно, 0 RUB) + FAQPage из отрисованного FAQ (вопросы и ответы ≡ странице, с чатом и без)",
+  title: "JSON-LD только на «/»: WebSite + WebApplication (FinanceApplication, ru, без цены и «бесплатно» — их нет на странице) + FAQPage из отрисованного FAQ (вопросы и ответы ≡ странице, с чатом и без)",
   async run(): Promise<Verdict> {
     const { SITE } = await site();
     const rows: string[] = [];
@@ -306,8 +306,8 @@ const SEO7: Check = {
       const types = typesOf(graph);
       const app = graph.find((g) => arr(g["@type"]).includes("WebApplication")) as Graph & { offers?: Record<string, unknown> } | undefined;
       const fp = graph.find((g) => arr(g["@type"]).includes("FAQPage")) as Graph & { mainEntity?: Array<{ name?: string; acceptedAnswer?: { text?: string } }> } | undefined;
-      const appOk = !!app && app.applicationCategory === "FinanceApplication" && app.inLanguage === "ru" && app.isAccessibleForFree === true &&
-        String(app.offers?.price) === "0" && app.offers?.priceCurrency === "RUB";
+      const appOk = !!app && app.applicationCategory === "FinanceApplication" && app.inLanguage === "ru" &&
+        app.isAccessibleForFree === undefined && app.offers === undefined;
       const qs = (fp?.mainEntity ?? []).map((x) => ({ q: x.name ?? "", a: x.acceptedAnswer?.text ?? "" }));
       const sameQ = qs.length === faq.length && qs.every((x, i) => x.q === faq[i].q);
       const diffA = qs.map((x, i) => (faq[i] && squash(x.a) === squash(faq[i].a) ? null : x.q)).filter((x): x is string => x != null);
@@ -368,7 +368,7 @@ const SEO8: Check = {
 
 const SEO9: Check = {
   id: "SEO.9", wp: "SEO", kind: "unit",
-  title: "Метрика выключена по умолчанию: <Metrika> только при NEXT_PUBLIC_YM_ID; init с clickmap/trackLinks/accurateTrackBounce/webvisor, хит на навигацию, reachGoal без счётчика — no-op",
+  title: "Метрика выключена по умолчанию: <Metrika> только при NEXT_PUBLIC_YM_ID; init с clickmap/trackLinks/accurateTrackBounce/webvisor, хит на навигацию без параметров адреса, reachGoal без счётчика — no-op",
   async run(): Promise<Verdict> {
     await site();
     const metrika = (await import("../../app/metrika")) as typeof import("../../app/metrika");
@@ -390,7 +390,12 @@ const SEO9: Check = {
       ["usePathname+useSearchParams", /\busePathname\(\)/.test(src) && /\buseSearchParams\(\)/.test(src)],
       ["<Suspense>", /<Suspense\b/.test(src)],
       ['хит "hit"', /"hit"/.test(src)],
-      ["m убирается из адреса хита", /\.delete\("m"\)/.test(src)],
+      ["хит без параметров: hitUrl", metrika.hitUrl("https://x.ru", "/check") === "https://x.ru/check"],
+      ["свой реферер без параметров", metrika.cleanReferrer("https://x.ru/chat?m=секрет&q=1#a", "https://x.ru") === "https://x.ru/chat"],
+      ["чужой реферер как есть", metrika.cleanReferrer("https://ya.ru/search?text=облигации", "https://x.ru") === "https://ya.ru/search?text=облигации"],
+      ["битый реферер → пусто", metrika.cleanReferrer("не адрес", "https://x.ru") === ""],
+      ["title /check без q", metrika.hitTitle("/check", "RU000A10ASE2 · Second opinion") === "Проверка · Second opinion"],
+      ["в хит идут hitUrl, cleanReferrer и hitTitle", /hitUrl\(origin, pathname\)/.test(src) && /cleanReferrer\(document\.referrer/.test(src) && /title: hitTitle\(/.test(src)],
       ["export reachGoal", /export function reachGoal\b/.test(src)],
       ["номер не в исходнике", !/\bym\(\s*\d{5,}|watch\/\d{5,}/.test(src + readSrc("apps/web/app/layout.tsx"))],
     ];
