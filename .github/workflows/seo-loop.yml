@@ -1,0 +1,108 @@
+# Еженедельный SEO-цикл: данные → аудит → 1–2 правки → независимая проверка → PR. Merge делает владелец.
+# Расписание GitHub запускает только из ветки по умолчанию — файл должен лежать и там.
+name: seo-loop
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # понедельник 09:17 МСК — после задачи, читающей Вебмастер (08:47 МСК)
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Рабочая ветка, в которую пойдёт PR"
+        default: "e2-blocks-page"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: seo-loop
+  cancel-in-progress: false
+
+env:
+  BASE: ${{ inputs.base || vars.SEO_BASE_BRANCH || 'e2-blocks-page' }}
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          fetch-depth: 0
+
+      - name: Дата запуска и видимость репозитория
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "RUN_DATE=$(date -u +%F)" >> "$GITHUB_ENV"
+          echo "REPO_PRIVATE=$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" >> "$GITHUB_ENV"
+
+      - name: Данные Вебмастера из ветки seo-data
+        run: |
+          mkdir -p seo/data
+          if git ls-remote --exit-code --heads origin seo-data >/dev/null; then
+            git fetch -q origin seo-data
+            git checkout origin/seo-data -- seo/data 2>/dev/null || true
+            git reset -q -- seo/data   # только в рабочее дерево: выгрузки не попадают в коммиты цикла
+          fi
+          ls -la seo/data || true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Харнес по живому сайту
+        run: |
+          mkdir -p seo/reports
+          for cfg in seo/sites/*.json; do
+            name=$(basename "$cfg" .json)
+            python3 seo/harness/seo_harness.py "$cfg" --live --md "seo/reports/${RUN_DATE}-harness-${name}.md" || true
+          done
+
+      - name: Метрика
+        env:
+          YM_TOKEN: ${{ secrets.YM_TOKEN }}
+          YM_COUNTER: ${{ vars.YM_COUNTER }}
+        run: python3 seo/tools/collect_metrika.py
+
+      - name: Search Console
+        env:
+          GSC_SA_JSON: ${{ secrets.GSC_SA_JSON }}
+          GSC_SITE: ${{ vars.GSC_SITE }}
+        run: |
+          if [ -n "$GSC_SA_JSON" ]; then pip install -q google-auth requests; fi
+          python3 seo/tools/collect_gsc.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Зависимости приложения
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: npm ci --no-audit --no-fund
+
+      - name: SEO-цикл (Claude)
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ env.BASE }}
+          RUN_DATE: ${{ env.RUN_DATE }}
+          REPO_PRIVATE: ${{ env.REPO_PRIVATE }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}   # без GitHub App Claude: токен workflow (нужно разрешение Actions создавать PR)
+          base_branch: ${{ env.BASE }}
+          branch_prefix: "seo/"
+          prompt: |
+            Выполни еженедельный SEO-цикл строго по инструкции seo/LOOP.md.
+            Рабочая ветка: ${{ env.BASE }}. Дата запуска: ${{ env.RUN_DATE }}. Репозиторий приватный: ${{ env.REPO_PRIVATE }}.
+            Субагенты лежат в .claude/agents (seo-auditor, seo-core, seo-editor, seo-reviewer, seo-reporter).
+            Итог — PR в ${{ env.BASE }} или issue с отчётом. Не мёржи и ничего не выкатывай.
+          claude_args: |
+            --max-turns 80
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,Bash(python3:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh issue create:*),Bash(curl:*),Bash(ls:*),Bash(cat:*),Bash(date:*)"
